@@ -20,6 +20,7 @@ export async function fetchWikipediaWikitext(articleUrl: string): Promise<Wikipe
 
   try {
     // Fetch the wikitext using Wikipedia API
+    // Wikipedia requires a descriptive User-Agent with contact info per their API guidelines
     const response = await axios.get(WIKIPEDIA_API_URL, {
       params: {
         action: 'query',
@@ -28,18 +29,30 @@ export async function fetchWikipediaWikitext(articleUrl: string): Promise<Wikipe
         rvprop: 'content',
         rvslots: 'main',
         format: 'json',
+        formatversion: '2',
+      },
+      headers: {
+        'User-Agent': 'WikiCiteVerify/1.0 (https://github.com/wikiciteverify; Citation verification educational tool)',
       },
     });
 
     const pages = response.data.query.pages;
-    const pageId = Object.keys(pages)[0];
-
-    if (pageId === '-1') {
+    
+    if (!pages || pages.length === 0) {
       throw new Error('Article not found');
     }
 
-    const page = pages[pageId];
-    const wikitext = page.revisions[0].slots.main['*'];
+    const page = pages[0];
+    
+    if (page.missing) {
+      throw new Error('Article not found');
+    }
+
+    if (!page.revisions || page.revisions.length === 0) {
+      throw new Error('No content available for this article');
+    }
+
+    const wikitext = page.revisions[0].slots.main.content;
 
     return {
       title: page.title,
@@ -47,6 +60,16 @@ export async function fetchWikipediaWikitext(articleUrl: string): Promise<Wikipe
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 403) {
+        throw new Error('Wikipedia denied access. The article may be protected or rate limits may apply.');
+      } else if (status === 404) {
+        throw new Error('Wikipedia API endpoint not found.');
+      } else if (status && status >= 500) {
+        throw new Error('Wikipedia API is temporarily unavailable. Please try again later.');
+      } else if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        throw new Error('Request to Wikipedia timed out. Please try again.');
+      }
       throw new Error(`Failed to fetch Wikipedia article: ${error.message}`);
     }
     throw error;

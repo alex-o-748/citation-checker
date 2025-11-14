@@ -15,6 +15,7 @@ export const citationResultSchema = z.object({
   wikipediaClaim: z.string(),
   sourceExcerpt: z.string(),
   confidence: z.number(),
+  supportStatus: z.enum(['supported', 'partially_supported', 'not_supported']),
   reasoning: z.string().optional(),
 });
 

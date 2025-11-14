@@ -7,6 +7,8 @@ export interface CitationResult {
   wikipediaClaim: string;
   sourceExcerpt: string;
   confidence: number;
+  supportStatus: 'supported' | 'partially_supported' | 'not_supported';
+  reasoning?: string;
 }
 
 interface CitationResultsProps {
@@ -31,9 +33,9 @@ export default function CitationResults({
     );
   }
 
-  const supportedCount = results.filter((r) => r.confidence >= 80).length;
-  const partialCount = results.filter((r) => r.confidence >= 50 && r.confidence < 80).length;
-  const unsupportedCount = results.filter((r) => r.confidence < 50).length;
+  const supportedCount = results.filter((r) => r.supportStatus === 'supported').length;
+  const partialCount = results.filter((r) => r.supportStatus === 'partially_supported').length;
+  const unsupportedCount = results.filter((r) => r.supportStatus === 'not_supported').length;
 
   return (
     <div className="space-y-6">
@@ -74,6 +76,7 @@ export default function CitationResults({
             wikipediaClaim={result.wikipediaClaim}
             sourceExcerpt={result.sourceExcerpt}
             confidence={result.confidence}
+            supportStatus={result.supportStatus}
           />
         ))}
       </div>
