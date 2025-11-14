@@ -48,11 +48,15 @@ export function extractCitationInstances(
 
     const claim = (beforeText.substring(sentenceStart) + afterText.substring(0, sentenceEnd))
       .trim()
-      .replace(/<ref[^>]*>/gi, '') // Remove ref tags from the claim
+      .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '') // Remove ref tags with content (multi-line)
+      .replace(/<ref[^>]*\/>/gi, '') // Remove self-closing ref tags
+      .replace(/<\/?ref[^>]*>/gi, '') // Remove any remaining ref tag fragments
+      .replace(/\{\{[^}]*\}\}/g, '') // Remove wiki templates like {{Lang|...}}
       .replace(/\[\[([^\]|]+)\|?([^\]]*)\]\]/g, '$2') // Convert wiki links [[Link|Text]] to Text
       .replace(/\[\[([^\]]+)\]\]/g, '$1') // Convert simple wiki links
       .replace(/'{2,}/g, '') // Remove bold/italic markup
-      .replace(/\s+/g, ' '); // Normalize whitespace
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
 
     if (claim && claim.length > 10) { // Only include meaningful claims
       instances.push({
