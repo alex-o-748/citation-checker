@@ -10,6 +10,15 @@ export function extractCitationInstances(
 ): CitationInstance[] {
   console.log('[Parser] Extracting citations for ref tag:', refTagName);
   
+  // Helper function to check if /> is part of a ref tag
+  const isRefSelfClosing = (text: string, slashPos: number): boolean => {
+    let checkPos = slashPos - 1;
+    while (checkPos >= 0 && text[checkPos] !== '<' && text[checkPos] !== '>') {
+      checkPos--;
+    }
+    return checkPos >= 0 && text[checkPos] === '<' && text.substring(checkPos, checkPos + 4) === '<ref';
+  };
+  
   const instances: CitationInstance[] = [];
 
   // Pattern to find ref tag usage:
@@ -32,36 +41,64 @@ export function extractCitationInstances(
     const afterText = wikitext.substring(position + match[0].length);
 
     // Scan backwards to find where the supported text starts
+    // Skip over consecutive ref tags (multiple citations on the same text)
     let claimStart = 0;
+    let hasSeenText = false; // Track if we've encountered non-whitespace text
     
     for (let i = position - 1; i >= 0; i--) {
+      const char = wikitext[i];
+      
+      // Track if we've seen actual text (not whitespace)
+      if (char !== ' ' && char !== '\t' && char !== '\n' && char !== '\r') {
+        // Check if this non-whitespace is part of a ref tag
+        const isPartOfRefTag = 
+          wikitext.substring(i, i + 6) === '</ref>' ||
+          (wikitext.substring(i, i + 2) === '/>' && i >= 4 && isRefSelfClosing(wikitext, i)) ||
+          (char === '<' && wikitext.substring(i, i + 4) === '<ref');
+        
+        if (!isPartOfRefTag) {
+          hasSeenText = true;
+        }
+      }
+      
       // Check for previous ref tag (closing tag)
       if (wikitext.substring(i, i + 6) === '</ref>') {
-        claimStart = i + 6; // Start after the closing tag
-        break;
+        // Only stop if we've seen actual text between this ref and our target
+        if (hasSeenText) {
+          claimStart = i + 6; // Start after the closing tag
+          break;
+        }
+        // Skip this ref tag and continue scanning
+        i -= 5; // Skip the rest of </ref>
+        continue;
       }
       
       // Check for previous ref tag (self-closing)
       if (wikitext.substring(i, i + 2) === '/>' && i >= 4) {
-        // Look backwards to see if this is part of a ref tag
-        let checkPos = i - 1;
-        while (checkPos >= 0 && wikitext[checkPos] !== '<' && wikitext[checkPos] !== '>') {
-          checkPos--;
-        }
-        if (checkPos >= 0 && wikitext[checkPos] === '<' && wikitext.substring(checkPos, checkPos + 4) === '<ref') {
-          claimStart = i + 2; // Start after the self-closing tag
-          break;
+        if (isRefSelfClosing(wikitext, i)) {
+          // Only stop if we've seen actual text between this ref and our target
+          if (hasSeenText) {
+            claimStart = i + 2; // Start after the self-closing tag
+            break;
+          }
+          // Skip backwards to the start of this ref tag
+          let checkPos = i - 1;
+          while (checkPos >= 0 && wikitext[checkPos] !== '<') {
+            checkPos--;
+          }
+          i = checkPos; // Continue from before the ref tag
+          continue;
         }
       }
       
       // Check for paragraph break (newline)
-      if (wikitext[i] === '\n') {
+      if (char === '\n') {
         claimStart = i + 1;
         break;
       }
       
       // Check for section start (equals signs for headers)
-      if (wikitext[i] === '=' && (i === 0 || wikitext[i - 1] === '\n')) {
+      if (char === '=' && (i === 0 || wikitext[i - 1] === '\n')) {
         claimStart = i;
         break;
       }
