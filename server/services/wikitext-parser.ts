@@ -26,39 +26,50 @@ export function extractCitationInstances(
   while ((match = refPattern.exec(wikitext)) !== null) {
     const position = match.index;
     
-    // Extract the claim - everything from the sentence start up to the ref tag
-    // Citations mark the END of a claim, so we don't include text after the ref tag
+    // Extract the claim - scan backwards from ref tag until we hit a boundary
+    // A citation may support multiple sentences
     const beforeText = wikitext.substring(0, position);
     const afterText = wikitext.substring(position + match[0].length);
 
-    // Find sentence start - simplified approach
-    // Just look backwards for the last period that's NOT inside a <ref>...</ref> tag
-    let sentenceStart = 0;
+    // Scan backwards to find where the supported text starts
+    let claimStart = 0;
     
-    // First, remove all ref tags from beforeText to find sentence boundaries
-    const beforeTextClean = beforeText
-      .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, ' ') // Replace ref tags with space
-      .replace(/<ref[^>]*\/>/gi, ' '); // Replace self-closing refs with space
-    
-    // Find the last period in the cleaned text
-    const lastPeriod = beforeTextClean.lastIndexOf('.');
-    const lastExclamation = beforeTextClean.lastIndexOf('!');
-    const lastQuestion = beforeTextClean.lastIndexOf('?');
-    const lastNewline = beforeTextClean.lastIndexOf('\n');
-    
-    const lastBoundary = Math.max(lastPeriod, lastExclamation, lastQuestion, lastNewline);
-    
-    if (lastBoundary >= 0) {
-      sentenceStart = lastBoundary + 1;
-      // Skip whitespace
-      while (sentenceStart < beforeText.length && /\s/.test(beforeText[sentenceStart])) {
-        sentenceStart++;
+    for (let i = position - 1; i >= 0; i--) {
+      // Check for previous ref tag (closing tag)
+      if (wikitext.substring(i, i + 6) === '</ref>') {
+        claimStart = i + 6; // Start after the closing tag
+        break;
+      }
+      
+      // Check for previous ref tag (self-closing)
+      if (wikitext.substring(i, i + 2) === '/>' && i >= 4) {
+        // Look backwards to see if this is part of a ref tag
+        let checkPos = i - 1;
+        while (checkPos >= 0 && wikitext[checkPos] !== '<' && wikitext[checkPos] !== '>') {
+          checkPos--;
+        }
+        if (checkPos >= 0 && wikitext[checkPos] === '<' && wikitext.substring(checkPos, checkPos + 4) === '<ref') {
+          claimStart = i + 2; // Start after the self-closing tag
+          break;
+        }
+      }
+      
+      // Check for paragraph break (newline)
+      if (wikitext[i] === '\n') {
+        claimStart = i + 1;
+        break;
+      }
+      
+      // Check for section start (equals signs for headers)
+      if (wikitext[i] === '=' && (i === 0 || wikitext[i - 1] === '\n')) {
+        claimStart = i;
+        break;
       }
     }
 
-    // Extract only the text BEFORE the ref tag (from sentence start to ref tag position)
-    const rawClaim = beforeText.substring(sentenceStart);
-    console.log(`[Parser] Sentence start: ${sentenceStart}, Ref tag position: ${position}`);
+    // Extract the claim text
+    const rawClaim = beforeText.substring(claimStart);
+    console.log(`[Parser] Claim start: ${claimStart}, Ref tag position: ${position}`);
     console.log('[Parser] Raw claim before cleaning:', rawClaim.substring(0, 200));
     
     const claim = rawClaim
