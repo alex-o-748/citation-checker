@@ -70,10 +70,11 @@ Preferred communication style: Simple, everyday language.
 
 ### External Dependencies
 
-**AI Service**: Anthropic Claude API (claude-3-5-sonnet-20241022 model)
+**AI Service**: Anthropic Claude API (claude-sonnet-4-5 model)
 - Used for fact-checking claims against source text
 - Returns structured JSON with confidence scores, relevant excerpts, reasoning, and support status
 - Requires ANTHROPIC_API_KEY environment variable
+- Model updated November 2024 to use latest Claude Sonnet 4.5 (best coding model)
 
 **Third-party APIs**:
 - Wikipedia API (en.wikipedia.org/w/api.php) for fetching article wikitext
