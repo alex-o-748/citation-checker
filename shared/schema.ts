@@ -1,18 +1,29 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// Citation verification request
+export const verifyRequestSchema = z.object({
+  wikipediaUrl: z.string().url(),
+  refTagName: z.string().min(1),
+  sourceText: z.string().min(1),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export type VerifyRequest = z.infer<typeof verifyRequestSchema>;
+
+// Citation result
+export const citationResultSchema = z.object({
+  id: z.number(),
+  wikipediaClaim: z.string(),
+  sourceExcerpt: z.string(),
+  confidence: z.number(),
+  reasoning: z.string().optional(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type CitationResult = z.infer<typeof citationResultSchema>;
+
+// Verification response
+export const verifyResponseSchema = z.object({
+  results: z.array(citationResultSchema),
+  sourceIdentifier: z.string(),
+});
+
+export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
