@@ -64,14 +64,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error(`Failed to verify claim ${index + 1}:`, error);
           
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          
           // Return a low-confidence result if verification fails
           return {
             id: index + 1,
             wikipediaClaim: instance.claim,
-            sourceExcerpt: "Error analyzing this citation",
+            sourceExcerpt: `Verification failed: ${errorMessage}`,
             confidence: 0,
             supportStatus: 'not_supported' as const,
-            reasoning: "Failed to verify this claim",
+            reasoning: `Error during verification: ${errorMessage}`,
           };
         }
       });

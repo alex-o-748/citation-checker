@@ -8,6 +8,8 @@ export interface WikipediaArticle {
 }
 
 export async function fetchWikipediaWikitext(articleUrl: string): Promise<WikipediaArticle> {
+  console.log('[Wikipedia] Fetching article from URL:', articleUrl);
+  
   // Extract article title from URL
   // Example: https://en.wikipedia.org/wiki/Great_Wall_of_China -> Great_Wall_of_China
   const match = articleUrl.match(/\/wiki\/([^?#]+)/);
