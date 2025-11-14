@@ -6,6 +6,7 @@ interface CitationCardProps {
   wikipediaClaim: string;
   sourceExcerpt: string;
   confidence: number;
+  supportStatus: 'supported' | 'partially_supported' | 'not_supported';
   citationNumber: number;
 }
 
@@ -13,17 +14,18 @@ export default function CitationCard({
   wikipediaClaim,
   sourceExcerpt,
   confidence,
+  supportStatus,
   citationNumber,
 }: CitationCardProps) {
   const getStatusInfo = () => {
-    if (confidence >= 80) {
+    if (supportStatus === 'supported') {
       return {
         label: "Supported",
         icon: CheckCircle2,
         variant: "default" as const,
         color: "text-green-600 dark:text-green-400",
       };
-    } else if (confidence >= 50) {
+    } else if (supportStatus === 'partially_supported') {
       return {
         label: "Partially Supported",
         icon: AlertTriangle,

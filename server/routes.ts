@@ -28,7 +28,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { wikipediaUrl, refTagName, sourceText } = validationResult.data;
 
       // Step 1: Fetch Wikipedia article wikitext
-      const article = await fetchWikipediaWikitext(wikipediaUrl);
+      let article;
+      try {
+        article = await fetchWikipediaWikitext(wikipediaUrl);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to fetch Wikipedia article";
+        return res.status(400).json({ error: message });
+      }
 
       // Step 2: Extract citation instances
       const citationInstances = extractCitationInstances(article.wikitext, refTagName);
@@ -50,6 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             wikipediaClaim: instance.claim,
             sourceExcerpt: verification.relevantExcerpt,
             confidence: verification.confidence,
+            supportStatus: verification.supportStatus,
             reasoning: verification.reasoning,
           };
           
@@ -63,6 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             wikipediaClaim: instance.claim,
             sourceExcerpt: "Error analyzing this citation",
             confidence: 0,
+            supportStatus: 'not_supported' as const,
             reasoning: "Failed to verify this claim",
           };
         }
