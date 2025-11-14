@@ -8,6 +8,8 @@ export function extractCitationInstances(
   wikitext: string,
   refTagName: string
 ): CitationInstance[] {
+  console.log('[Parser] Extracting citations for ref tag:', refTagName);
+  
   const instances: CitationInstance[] = [];
 
   // Pattern to find ref tag usage:
@@ -61,6 +63,8 @@ export function extractCitationInstances(
     }
   }
 
+  console.log(`[Parser] Found ${instances.length} citation instances`);
+  
   return instances;
 }
 
