@@ -2,48 +2,57 @@ import { useState } from "react";
 import CitationInputForm from "@/components/CitationInputForm";
 import CitationResults, { type CitationResult } from "@/components/CitationResults";
 import { FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Home() {
   const [results, setResults] = useState<CitationResult[] | null>(null);
-  const [sourceIdentifier, setSourceIdentifier] = useState("");
+  const [refTagName, setRefTagName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (data: {
     wikipediaUrl: string;
-    sourceIdentifier: string;
+    refTagName: string;
     sourceText: string;
   }) => {
     setIsLoading(true);
-    setSourceIdentifier(data.sourceIdentifier);
+    setRefTagName(data.refTagName);
+    setResults(null);
 
-    console.log("Verifying citations with data:", data);
+    try {
+      const response = await apiRequest("POST", "/api/verify-citations", data);
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock results for demonstration
-      const mockResults: CitationResult[] = [
-        {
-          id: 1,
-          wikipediaClaim: "The Great Wall of China is approximately 21,196 kilometers long.",
-          sourceExcerpt: "Recent archaeological surveys have determined that the total length of the Great Wall measures 21,196.18 km.",
-          confidence: 95,
-        },
-        {
-          id: 2,
-          wikipediaClaim: "Construction began in the 7th century BC.",
-          sourceExcerpt: "Early wall segments were built during the Warring States period, with major construction in the 3rd century BC.",
-          confidence: 65,
-        },
-      ];
+      const responseData = await response.json();
 
-      setResults(mockResults);
-      setIsLoading(false);
+      if (!response.ok) {
+        throw new Error(responseData.error || "Failed to verify citations");
+      }
+
+      setResults(responseData.results);
 
       // Scroll to results
       setTimeout(() => {
         document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
-    }, 2000);
+
+      if (responseData.results.length === 0) {
+        toast({
+          title: "No citations found",
+          description: `Could not find any citations with ref tag name "${data.refTagName}"`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Verification failed",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+      setResults(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -72,7 +81,7 @@ export default function Home() {
             <div id="results" className="scroll-mt-8">
               <CitationResults
                 results={results}
-                sourceIdentifier={sourceIdentifier}
+                sourceIdentifier={refTagName}
               />
             </div>
           )}

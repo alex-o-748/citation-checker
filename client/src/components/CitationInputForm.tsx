@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react";
 interface CitationInputFormProps {
   onSubmit: (data: {
     wikipediaUrl: string;
-    sourceIdentifier: string;
+    refTagName: string;
     sourceText: string;
   }) => void;
   isLoading?: boolean;
@@ -20,12 +20,12 @@ export default function CitationInputForm({
   isLoading = false,
 }: CitationInputFormProps) {
   const [wikipediaUrl, setWikipediaUrl] = useState("");
-  const [sourceIdentifier, setSourceIdentifier] = useState("");
+  const [refTagName, setRefTagName] = useState("");
   const [sourceText, setSourceText] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ wikipediaUrl, sourceIdentifier, sourceText });
+    onSubmit({ wikipediaUrl, refTagName, sourceText });
   };
 
   return (
@@ -56,18 +56,18 @@ export default function CitationInputForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="source-identifier">Source Identifier</Label>
+            <Label htmlFor="ref-tag-name">Reference Tag Name</Label>
             <Input
-              id="source-identifier"
-              data-testid="input-source-identifier"
-              placeholder="e.g., Smith 2020, [5], or Author Name"
-              value={sourceIdentifier}
-              onChange={(e) => setSourceIdentifier(e.target.value)}
+              id="ref-tag-name"
+              data-testid="input-ref-tag-name"
+              placeholder='e.g., smith2020 (from <ref name="smith2020">)'
+              value={refTagName}
+              onChange={(e) => setRefTagName(e.target.value)}
               required
               disabled={isLoading}
             />
             <p className="text-sm text-muted-foreground">
-              Enter the citation number, author name, or reference as it appears in the article
+              Enter the ref tag name from the Wikipedia source code (view page source and look for &lt;ref name="..."&gt;)
             </p>
           </div>
 
