@@ -8,21 +8,28 @@ export function extractCitationInstances(
   wikitext: string,
   refTagName: string
 ): CitationInstance[] {
-  console.log('[Parser] Extracting citations for ref tag:', refTagName);
+  console.log('[Parser] Extracting citations for identifier:', refTagName);
 
   const instances: CitationInstance[] = [];
 
-  // Pattern to find ref tag usage:
-  // - Self-closing: <ref name="tagname" />
-  // - Paired with content (potentially multi-line): <ref name="tagname">...</ref>
-  // - Reused reference: <ref name="tagname" />
-  const refPattern = new RegExp(
-    `<ref\\s+name\\s*=\\s*["']${escapeRegExp(refTagName)}["']\\s*(?:\\/?>|>[\\s\\S]*?<\\/ref>)`,
-    'gi'
-  );
+  // Check if this is an sfn citation (starts with {{sfn)
+  const isSfn = refTagName.startsWith('{{sfn');
+
+  let pattern: RegExp;
+
+  if (isSfn) {
+    // For sfn, match the exact citation template
+    pattern = new RegExp(escapeRegExp(refTagName), 'gi');
+  } else {
+    // Original ref tag pattern
+    pattern = new RegExp(
+      `<ref\\s+name\\s*=\\s*["']${escapeRegExp(refTagName)}["']\\s*(?:\\/?>|>[\\s\\S]*?<\\/ref>)`,
+      'gi'
+    );
+  }
 
   let match;
-  while ((match = refPattern.exec(wikitext)) !== null) {
+  while ((match = pattern.exec(wikitext)) !== null) {
     const position = match.index;
 
     console.log(`[Parser] Found citation at position ${position}`);
@@ -31,11 +38,12 @@ export function extractCitationInstances(
     const beforeText = wikitext.substring(0, position);
     const afterText = wikitext.substring(position + match[0].length);
 
-    // First, find all ref tag positions before our target position
+    // First, find all citation positions before our target position (both ref tags and sfn)
     const allRefPositions: Array<{start: number, end: number}> = [];
     const allRefPattern = /<ref[^>]*>[\s\S]*?<\/ref>|<ref[^>]*\/>/gi;
-    let refMatch;
+    const allSfnPattern = /\{\{sfn[^}]*\}\}/gi;
 
+    let refMatch;
     while ((refMatch = allRefPattern.exec(wikitext)) !== null) {
       if (refMatch.index + refMatch[0].length < position) {
         allRefPositions.push({
@@ -45,7 +53,20 @@ export function extractCitationInstances(
       }
     }
 
-    console.log(`[Parser] Found ${allRefPositions.length} ref tags before target position`);
+    let sfnMatch;
+    while ((sfnMatch = allSfnPattern.exec(wikitext)) !== null) {
+      if (sfnMatch.index + sfnMatch[0].length < position) {
+        allRefPositions.push({
+          start: sfnMatch.index,
+          end: sfnMatch.index + sfnMatch[0].length
+        });
+      }
+    }
+
+    // Sort by position
+    allRefPositions.sort((a, b) => a.start - b.start);
+
+    console.log(`[Parser] Found ${allRefPositions.length} citations before target position`);
 
     // Now find where the claim starts by looking backwards through refs and other boundaries
     let claimStart = 0;
@@ -55,24 +76,28 @@ export function extractCitationInstances(
       const ref = allRefPositions[i];
       const textBetween = wikitext.substring(ref.end, position);
 
-      // Remove only whitespace to check if there's actual text
-      const textBetweenTrimmed = textBetween.replace(/\s+/g, '');
+      // Remove whitespace AND other citations to check if there's actual text
+      const textBetweenTrimmed = textBetween
+        .replace(/\s+/g, '')
+        .replace(/<ref[^>]*>[\s\S]*?<\/ref>/g, '')
+        .replace(/<ref[^>]*\/>/g, '')
+        .replace(/\{\{sfn[^}]*\}\}/g, '');
 
       if (textBetweenTrimmed.length > 0) {
         // There's actual text between this ref and our target
         // This ref is a boundary
         claimStart = ref.end;
-        console.log(`[Parser] Found text between previous ref and target, claim starts at ${claimStart}`);
+        console.log(`[Parser] Found text between previous citation and target, claim starts at ${claimStart}`);
         break;
       }
       // No text between refs, so they cite the same claim
       // Keep looking backwards
-      console.log(`[Parser] No text between ref at ${ref.end} and target, continuing search`);
+      console.log(`[Parser] No text between citation at ${ref.end} and target, continuing search`);
     }
 
     // If we didn't find a ref boundary, look for other boundaries (paragraph, section)
     if (claimStart === 0) {
-      console.log('[Parser] No ref boundary found, looking for paragraph/section boundaries');
+      console.log('[Parser] No citation boundary found, looking for paragraph/section boundaries');
 
       // Scan backwards from position to find paragraph or section boundaries
       for (let i = position - 1; i >= 0; i--) {
@@ -106,7 +131,7 @@ export function extractCitationInstances(
 
     // Extract the claim text
     const rawClaim = beforeText.substring(claimStart);
-    console.log(`[Parser] Claim start: ${claimStart}, Ref tag position: ${position}`);
+    console.log(`[Parser] Claim start: ${claimStart}, Citation position: ${position}`);
     console.log('[Parser] Raw claim before cleaning:', rawClaim.substring(0, 200));
 
     const claim = rawClaim
@@ -114,6 +139,7 @@ export function extractCitationInstances(
       .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '') // Remove ref tags with content (multi-line)
       .replace(/<ref[^>]*\/>/gi, '') // Remove self-closing ref tags
       .replace(/<\/?ref[^>]*>/gi, '') // Remove any remaining ref tag fragments
+      .replace(/\{\{sfn[^}]*\}\}/g, '') // Remove sfn citations
       .replace(/\{\{[^}]*\}\}/g, '') // Remove wiki templates like {{Lang|...}}
       .replace(/\[\[([^\]|]+)\|?([^\]]*)\]\]/g, (match, p1, p2) => p2 || p1) // Convert wiki links [[Link|Text]] to Text or just Link
       .replace(/'{2,}/g, '') // Remove bold/italic markup
@@ -144,6 +170,7 @@ export function cleanWikitext(text: string): string {
   return text
     .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '') // Remove ref tags with content
     .replace(/<ref[^>]*\/>/gi, '') // Remove self-closing ref tags
+    .replace(/\{\{sfn[^}]*\}\}/g, '') // Remove sfn citations
     .replace(/\[\[([^\]|]+)\|?([^\]]*)\]\]/g, (match, p1, p2) => p2 || p1) // Convert wiki links
     .replace(/'{2,}/g, '') // Remove bold/italic
     .replace(/\{\{[^}]+\}\}/g, '') // Remove templates
