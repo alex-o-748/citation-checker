@@ -23,7 +23,7 @@ export function extractCitationInstances(
   } else {
     // Original ref tag pattern
     pattern = new RegExp(
-      `<ref\\s+name\\s*=\\s*["']${escapeRegExp(refTagName)}["']\\s*(?:\\/?>|>[\\s\\S]*?<\\/ref>)`,
+      `<ref\\s+name\\s*=\\s*["']?${escapeRegExp(refTagName)}["']?\\s*(?:\\/?>|>[\\s\\S]*?<\\/ref>)`,
       'gi'
     );
   }
