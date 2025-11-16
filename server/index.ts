@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initDatabase } from "./db-init";
 
 const app = express();
 
@@ -47,6 +48,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize database tables (non-blocking)
+  initDatabase().catch((error) => {
+    console.warn('[Database] Database initialization failed, will retry on first request:', error.message);
+  });
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
