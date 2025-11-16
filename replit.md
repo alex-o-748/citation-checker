@@ -59,14 +59,26 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage
 
-**Current Implementation**: Stateless architecture with no persistent storage required. All citation verification is performed on-demand.
+**Current Implementation**: PostgreSQL database storage using Neon Serverless for persistence of verification results.
 
-**Database Configuration**: Drizzle ORM is configured with PostgreSQL dialect (via Neon serverless driver) but not actively used. The configuration exists for potential future features like:
-- Saving verification history
-- Caching verification results
-- User accounts and saved projects
+**Database Architecture**:
+- **verification_checks** table: Stores each verification request (Wikipedia URL, ref tag name, source text, timestamp)
+- **citation_results** table: Stores individual claim verification results (claim text, source excerpt, confidence score, support status, reasoning)
+- Drizzle ORM with PostgreSQL dialect via @neondatabase/serverless
+- Lazy initialization pattern prevents crashes when database is unavailable
+- Graceful degradation: API continues serving verification requests even if database save fails
 
-**Rationale**: Citations need real-time verification against current source material, making caching less valuable. The tool is designed as a one-off verification utility rather than a persistent data application.
+**Implementation Details**:
+- Database initialization is deferred until first save attempt (lazy loading)
+- No Neon client created at module import time to prevent startup crashes
+- Failed database operations are logged but don't prevent API responses
+- Schema migration managed via Drizzle Kit (`npm run db:push`)
+- Connection requires DATABASE_URL environment variable
+
+**Rationale**: While citations need real-time verification, storing results enables:
+- Historical tracking of verification patterns
+- Analysis of citation accuracy trends
+- Potential future features like verification history dashboard
 
 ### External Dependencies
 
