@@ -10,10 +10,22 @@ import {
 } from '@shared/schema';
 import { initDatabase } from './db-init';
 
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle(sql);
-
+let sql: ReturnType<typeof neon> | null = null;
+let db: ReturnType<typeof drizzle> | null = null;
 let dbInitialized = false;
+
+function getDb() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+  
+  if (!sql) {
+    sql = neon(process.env.DATABASE_URL);
+    db = drizzle(sql);
+  }
+  
+  return db!;
+}
 
 export interface IStorage {
   saveVerificationCheck(
@@ -43,6 +55,9 @@ export class DbStorage implements IStorage {
       reasoning?: string;
     }>
   ): Promise<number> {
+    // Get database connection (will throw if DATABASE_URL is not set)
+    const database = getDb();
+    
     // Ensure database is initialized before first save
     if (!dbInitialized) {
       try {
@@ -55,7 +70,7 @@ export class DbStorage implements IStorage {
     }
 
     // Insert verification check
-    const [check] = await db.insert(verificationChecks).values({
+    const [check] = await database.insert(verificationChecks).values({
       wikipediaUrl,
       refTagName,
       sourceText,
@@ -63,7 +78,7 @@ export class DbStorage implements IStorage {
 
     // Insert all citation results
     if (results.length > 0) {
-      await db.insert(citationResults).values(
+      await database.insert(citationResults).values(
         results.map(result => ({
           checkId: check.id,
           wikipediaClaim: result.wikipediaClaim,

@@ -1,13 +1,27 @@
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL!);
+let sql: ReturnType<typeof neon> | null = null;
+
+function getSql() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+  
+  if (!sql) {
+    sql = neon(process.env.DATABASE_URL);
+  }
+  
+  return sql;
+}
 
 export async function initDatabase() {
   try {
     console.log('[Database] Initializing database tables...');
     
+    const database = getSql();
+    
     // Create verification_checks table
-    await sql`
+    await database`
       CREATE TABLE IF NOT EXISTS verification_checks (
         id SERIAL PRIMARY KEY,
         wikipedia_url TEXT NOT NULL,
@@ -18,7 +32,7 @@ export async function initDatabase() {
     `;
     
     // Create citation_results table
-    await sql`
+    await database`
       CREATE TABLE IF NOT EXISTS citation_results (
         id SERIAL PRIMARY KEY,
         check_id INTEGER NOT NULL REFERENCES verification_checks(id),
