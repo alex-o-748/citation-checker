@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { pgTable, serial, text, integer, timestamp, varchar } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 
 // Citation verification request
 export const verifyRequestSchema = z.object({
@@ -28,3 +30,40 @@ export const verifyResponseSchema = z.object({
 });
 
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
+
+// Database tables
+export const verificationChecks = pgTable("verification_checks", {
+  id: serial("id").primaryKey(),
+  wikipediaUrl: text("wikipedia_url").notNull(),
+  refTagName: text("ref_tag_name").notNull(),
+  sourceText: text("source_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const citationResults = pgTable("citation_results", {
+  id: serial("id").primaryKey(),
+  checkId: integer("check_id").notNull().references(() => verificationChecks.id),
+  wikipediaClaim: text("wikipedia_claim").notNull(),
+  sourceExcerpt: text("source_excerpt").notNull(),
+  confidence: integer("confidence").notNull(),
+  supportStatus: varchar("support_status", { length: 50 }).notNull(),
+  reasoning: text("reasoning"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Insert schemas
+export const insertVerificationCheckSchema = createInsertSchema(verificationChecks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCitationResultSchema = createInsertSchema(citationResults).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type VerificationCheck = typeof verificationChecks.$inferSelect;
+export type InsertVerificationCheck = z.infer<typeof insertVerificationCheckSchema>;
+export type CitationResultDb = typeof citationResults.$inferSelect;
+export type InsertCitationResult = z.infer<typeof insertCitationResultSchema>;
