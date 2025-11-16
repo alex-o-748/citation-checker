@@ -4,6 +4,7 @@ import { verifyRequestSchema, type CitationResult } from "@shared/schema";
 import { fetchWikipediaWikitext } from "./services/wikipedia";
 import { extractCitationInstances } from "./services/wikitext-parser";
 import { verifyClaim } from "./services/claude";
+import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Citation verification endpoint
@@ -79,6 +80,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const results = await Promise.all(verificationPromises);
+
+      // Save verification results to database
+      try {
+        await storage.saveVerificationCheck(
+          wikipediaUrl,
+          refTagName,
+          sourceText,
+          results.map(r => ({
+            wikipediaClaim: r.wikipediaClaim,
+            sourceExcerpt: r.sourceExcerpt,
+            confidence: r.confidence,
+            supportStatus: r.supportStatus,
+            reasoning: r.reasoning,
+          }))
+        );
+        console.log('[Storage] Verification results saved to database');
+      } catch (error) {
+        // Don't fail the request if database save fails
+        console.error('[Storage] Failed to save verification results:', error);
+      }
 
       res.json({
         results,
