@@ -40,7 +40,7 @@ export function extractCitationInstances(
 
     // First, find all citation positions before our target position (both ref tags and sfn)
     const allRefPositions: Array<{start: number, end: number}> = [];
-    const allRefPattern = /<ref[^>]*>[\s\S]*?<\/ref>|<ref[^>]*\/>/gi;
+    const allRefPattern = /<ref[^>]*\/>|<ref[^>]*>[\s\S]*?<\/ref>/gi;
     const allSfnPattern = /\{\{sfn[^}]*\}\}/gi;
 
     let refMatch;
