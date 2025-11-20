@@ -4,6 +4,73 @@ export interface CitationInstance {
   contextAfter: string;
 }
 
+
+export interface ReferenceInfo {
+  id: string;
+  type: 'ref' | 'sfn';
+  preview?: string; // Optional preview of where it's used
+}
+
+/**
+ * Extract all unique references from wikitext
+ */
+export function listAllReferences(wikitext: string): ReferenceInfo[] {
+  console.log('[Parser] Extracting all references from article');
+
+  const references: ReferenceInfo[] = [];
+  const seenIds = new Set<string>();
+
+  // Extract named ref tags: <ref name="identifier">
+  const refPattern = /<ref\s+name\s*=\s*["']?([^"'\s>\/]+)["']?\s*(?:\/?>|>[\s\S]*?<\/ref>)/gi;
+  let refMatch;
+
+  while ((refMatch = refPattern.exec(wikitext)) !== null) {
+    const refName = refMatch[1];
+
+    if (!seenIds.has(refName)) {
+      seenIds.add(refName);
+
+      // Try to get a preview of the content before this ref
+      const position = refMatch.index;
+      const beforeText = wikitext.substring(Math.max(0, position - 100), position);
+      const preview = cleanWikitext(beforeText).slice(-80).trim();
+
+      references.push({
+        id: refName,
+        type: 'ref',
+        preview: preview || undefined,
+      });
+    }
+  }
+
+  // Extract sfn citations: {{sfn|Author|Year|...}}
+  const sfnPattern = /\{\{sfn\|[^}]+\}\}/gi;
+  let sfnMatch;
+
+  while ((sfnMatch = sfnPattern.exec(wikitext)) !== null) {
+    const sfnTag = sfnMatch[0];
+
+    if (!seenIds.has(sfnTag)) {
+      seenIds.add(sfnTag);
+
+      // Try to get a preview of the content before this sfn
+      const position = sfnMatch.index;
+      const beforeText = wikitext.substring(Math.max(0, position - 100), position);
+      const preview = cleanWikitext(beforeText).slice(-80).trim();
+
+      references.push({
+        id: sfnTag,
+        type: 'sfn',
+        preview: preview || undefined,
+      });
+    }
+  }
+
+  console.log(`[Parser] Found ${references.length} unique references`);
+
+  return references;
+}
+
 export function extractCitationInstances(
   wikitext: string,
   refTagName: string
