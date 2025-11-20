@@ -7,6 +7,42 @@ import { verifyClaim } from "./services/claude";
 import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // List all references in a Wikipedia article
+  app.get("/api/list-references", async (req, res) => {
+    try {
+      const wikipediaUrl = req.query.url as string;
+
+      if (!wikipediaUrl) {
+        return res.status(400).json({ 
+          error: "Missing required parameter: url" 
+        });
+      }
+
+      // Fetch Wikipedia article wikitext
+      let article;
+      try {
+        article = await fetchWikipediaWikitext(wikipediaUrl);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to fetch Wikipedia article";
+        return res.status(400).json({ error: message });
+      }
+
+      // Extract all references
+      const references = listAllReferences(article.wikitext);
+
+      res.json({
+        articleTitle: article.title,
+        references,
+        total: references.length,
+      });
+    } catch (error) {
+      console.error("List references error:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to list references" 
+      });
+    }
+  });
+  
   // Citation verification endpoint
   app.post("/api/verify-citations", async (req, res) => {
     try {

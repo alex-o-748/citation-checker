@@ -1,27 +1,71 @@
 import { useState } from "react";
-import CitationInputForm from "@/components/CitationInputForm";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import ReferenceList from "@/components/ReferenceList";
 import CitationResults, { type CitationResult } from "@/components/CitationResults";
-import { FileText } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Home() {
+  // Step tracking
+  const [currentStep, setCurrentStep] = useState<'url' | 'reference' | 'source'>('url');
+
+  // Form state
+  const [wikipediaUrl, setWikipediaUrl] = useState("");
+  const [selectedReference, setSelectedReference] = useState("");
+  const [sourceText, setSourceText] = useState("");
+
+  // Results state
   const [results, setResults] = useState<CitationResult[] | null>(null);
-  const [refTagName, setRefTagName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const { toast } = useToast();
 
-  const handleSubmit = async (data: {
-    wikipediaUrl: string;
-    refTagName: string;
-    sourceText: string;
-  }) => {
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (wikipediaUrl) {
+      setCurrentStep('reference');
+      setSelectedReference('');
+      setSourceText('');
+      setResults(null);
+    }
+  };
+
+  const handleReferenceSelect = (refId: string) => {
+    setSelectedReference(refId);
+    setCurrentStep('source');
+    setResults(null);
+  };
+
+  const handleBackToUrl = () => {
+    setCurrentStep('url');
+    setSelectedReference('');
+    setSourceText('');
+    setResults(null);
+  };
+
+  const handleBackToReference = () => {
+    setCurrentStep('reference');
+    setSelectedReference('');
+    setSourceText('');
+    setResults(null);
+  };
+
+  const handleVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
-    setRefTagName(data.refTagName);
     setResults(null);
 
     try {
-      const response = await apiRequest("POST", "/api/verify-citations", data);
+      const response = await apiRequest("POST", "/api/verify-citations", {
+        wikipediaUrl,
+        refTagName: selectedReference,
+        sourceText,
+      });
 
       const responseData = await response.json();
 
@@ -39,7 +83,7 @@ export default function Home() {
       if (responseData.results.length === 0) {
         toast({
           title: "No citations found",
-          description: `Could not find any citations with ref tag name "${data.refTagName}"`,
+          description: `Could not find any citations with reference "${selectedReference}"`,
           variant: "destructive",
         });
       }
@@ -74,15 +118,134 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="space-y-8">
-          <CitationInputForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <div className="space-y-6">
+          {/* Step 1: Wikipedia URL */}
+          {currentStep === 'url' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Step 1: Enter Wikipedia Article</CardTitle>
+                <CardDescription>
+                  Paste the URL of the Wikipedia article you want to verify
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleUrlSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="wikipedia-url">Wikipedia Article URL</Label>
+                    <Input
+                      id="wikipedia-url"
+                      type="url"
+                      placeholder="https://en.wikipedia.org/wiki/Article_Name"
+                      value={wikipediaUrl}
+                      onChange={(e) => setWikipediaUrl(e.target.value)}
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Example: https://en.wikipedia.org/wiki/Great_Wall_of_China
+                    </p>
+                  </div>
+                  <Button type="submit" disabled={!wikipediaUrl}>
+                    Continue to Select Reference
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
+          {/* Step 2: Reference Selection */}
+          {currentStep === 'reference' && (
+            <ReferenceList
+              wikipediaUrl={wikipediaUrl}
+              onSelectReference={handleReferenceSelect}
+              onBack={handleBackToUrl}
+            />
+          )}
+
+          {/* Step 3: Source Text Input */}
+          {currentStep === 'source' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Step 3: Enter Source Text</CardTitle>
+                <CardDescription>
+                  Paste the text from your source document to verify against
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleVerifySubmit} className="space-y-6">
+                  {/* Show selected reference */}
+                  <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+                    <p className="text-sm font-medium">Selected Reference</p>
+                    <p className="font-mono text-sm break-all">{selectedReference}</p>
+                    <Button
+                      type="button"
+                      onClick={handleBackToReference}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Select Different Reference
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="source-text">Source Text</Label>
+                    <Textarea
+                      id="source-text"
+                      placeholder="Paste the full text of your source material here..."
+                      value={sourceText}
+                      onChange={(e) => setSourceText(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      className="min-h-64 font-serif"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Copy and paste the text from your source document (book, article, report, etc.)
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      disabled={isLoading || !sourceText}
+                      className="flex-1"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Analyzing Citations...
+                        </>
+                      ) : (
+                        "Verify Citations"
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleBackToReference}
+                      variant="outline"
+                      disabled={isLoading}
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Results */}
           {results !== null && (
             <div id="results" className="scroll-mt-8">
               <CitationResults
                 results={results}
-                sourceIdentifier={refTagName}
+                sourceIdentifier={selectedReference}
               />
+              <div className="mt-4">
+                <Button
+                  onClick={handleBackToReference}
+                  variant="outline"
+                >
+                  Verify Another Reference
+                </Button>
+              </div>
             </div>
           )}
         </div>
