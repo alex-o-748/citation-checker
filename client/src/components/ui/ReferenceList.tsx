@@ -11,7 +11,7 @@ interface ReferenceListProps {
   onSelectReference: (refId: string) => void;
 }
 
-export function ReferenceList({
+export default function ReferenceList({
   wikipediaUrl,
   onSelectReference,
 }: ReferenceListProps) {

@@ -2,9 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { verifyRequestSchema, type CitationResult } from "@shared/schema";
 import { fetchWikipediaWikitext } from "./services/wikipedia";
-import { extractCitationInstances } from "./services/wikitext-parser";
+import { extractCitationInstances, listAllReferences } from "./services/wikitext-parser";
 import { verifyClaim } from "./services/claude";
-import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // List all references in a Wikipedia article
