@@ -6,7 +6,7 @@ import { createInsertSchema } from "drizzle-zod";
 export const verifyRequestSchema = z.object({
   wikipediaUrl: z.string().url(),
   refTagName: z.string().min(1),
-  sourceText: z.string().min(1),
+  sourceText: z.string().min(1).optional(),
 });
 
 export type VerifyRequest = z.infer<typeof verifyRequestSchema>;
@@ -27,6 +27,8 @@ export type CitationResult = z.infer<typeof citationResultSchema>;
 export const verifyResponseSchema = z.object({
   results: z.array(citationResultSchema),
   sourceIdentifier: z.string(),
+  sourceUrl: z.string().optional(),
+  sourceFetchedAutomatically: z.boolean().optional(),
 });
 
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
@@ -37,6 +39,7 @@ export const verificationChecks = pgTable("verification_checks", {
   wikipediaUrl: text("wikipedia_url").notNull(),
   refTagName: text("ref_tag_name").notNull(),
   sourceText: text("source_text").notNull(),
+  sourceUrl: text("source_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
