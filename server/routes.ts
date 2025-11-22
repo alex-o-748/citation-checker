@@ -4,6 +4,7 @@ import { verifyRequestSchema, type CitationResult } from "@shared/schema";
 import { fetchWikipediaWikitext } from "./services/wikipedia";
 import { extractCitationInstances, listAllReferences } from "./services/wikitext-parser";
 import { verifyClaim } from "./services/claude";
+import { fetchSourceFromCitation } from "./services/source-fetcher";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // List all references in a Wikipedia article
@@ -61,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { wikipediaUrl, refTagName, sourceText } = validationResult.data;
+      const { wikipediaUrl, refTagName, sourceText: providedSourceText } = validationResult.data;
 
       // Step 1: Fetch Wikipedia article wikitext
       let article;
@@ -72,7 +73,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: message });
       }
 
-      // Step 2: Extract citation instances
+      // Step 2: Get the full reference tag from the wikitext to extract URL
+      let refTagContent = refTagName;
+
+      // If it's a ref tag (not sfn), try to find the full tag in the wikitext
+      if (!refTagName.startsWith('{{sfn')) {
+        const refPattern = new RegExp(
+          `<ref\\s+name\\s*=\\s*["']?${refTagName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\s*>(.*?)<\\/ref>`,
+          'i'
+        );
+        const match = article.wikitext.match(refPattern);
+        if (match) {
+          refTagContent = match[0];
+        }
+      }
+
+      // Step 3: Determine source text (use provided or auto-fetch)
+      let sourceText = providedSourceText;
+      let sourceUrl: string | undefined;
+      let sourceFetchedAutomatically = false;
+
+      if (!sourceText) {
+        console.log('[API] No source text provided, attempting to auto-fetch...');
+        try {
+          const fetchedSource = await fetchSourceFromCitation(refTagContent);
+
+          if (fetchedSource) {
+            sourceText = fetchedSource.text;
+            sourceUrl = fetchedSource.url;
+            sourceFetchedAutomatically = true;
+            console.log('[API] Successfully auto-fetched source from:', sourceUrl);
+          } else {
+            return res.status(400).json({
+              error: "No URL found in citation and no source text provided. Please provide the source text manually.",
+            });
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to fetch source";
+          return res.status(400).json({
+            error: `Could not auto-fetch source: ${message}. Please provide the source text manually.`,
+          });
+        }
+      }
+
+      // Step 4: Extract citation instances
       const citationInstances = extractCitationInstances(article.wikitext, refTagName);
 
       if (citationInstances.length === 0) {
@@ -122,6 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           wikipediaUrl,
           refTagName,
           sourceText,
+          sourceUrl,
           results.map(r => ({
             wikipediaClaim: r.wikipediaClaim,
             sourceExcerpt: r.sourceExcerpt,
@@ -139,6 +184,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         results,
         sourceIdentifier: refTagName,
+        sourceUrl,
+        sourceFetchedAutomatically,
       });
     } catch (error) {
       console.error("Verification error:", error);

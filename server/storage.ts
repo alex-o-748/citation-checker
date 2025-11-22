@@ -18,12 +18,12 @@ function getDb() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
-  
+
   if (!sql) {
     sql = neon(process.env.DATABASE_URL);
     db = drizzle(sql);
   }
-  
+
   return db!;
 }
 
@@ -32,6 +32,7 @@ export interface IStorage {
     wikipediaUrl: string,
     refTagName: string,
     sourceText: string,
+    sourceUrl: string | undefined,
     results: Array<{
       wikipediaClaim: string;
       sourceExcerpt: string;
@@ -47,6 +48,7 @@ export class DbStorage implements IStorage {
     wikipediaUrl: string,
     refTagName: string,
     sourceText: string,
+    sourceUrl: string | undefined,
     results: Array<{
       wikipediaClaim: string;
       sourceExcerpt: string;
@@ -57,7 +59,7 @@ export class DbStorage implements IStorage {
   ): Promise<number> {
     // Get database connection (will throw if DATABASE_URL is not set)
     const database = getDb();
-    
+
     // Ensure database is initialized before first save
     if (!dbInitialized) {
       try {
@@ -74,6 +76,7 @@ export class DbStorage implements IStorage {
       wikipediaUrl,
       refTagName,
       sourceText,
+      sourceUrl, // Added sourceUrl field
     }).returning();
 
     // Insert all citation results

@@ -6,20 +6,20 @@ function getSql() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
-  
+
   if (!sql) {
     sql = neon(process.env.DATABASE_URL);
   }
-  
+
   return sql;
 }
 
 export async function initDatabase() {
   try {
     console.log('[Database] Initializing database tables...');
-    
+
     const database = getSql();
-    
+
     // Create verification_checks table
     await database`
       CREATE TABLE IF NOT EXISTS verification_checks (
@@ -27,10 +27,11 @@ export async function initDatabase() {
         wikipedia_url TEXT NOT NULL,
         ref_tag_name TEXT NOT NULL,
         source_text TEXT NOT NULL,
+        source_url TEXT,
         created_at TIMESTAMP DEFAULT NOW() NOT NULL
       )
     `;
-    
+
     // Create citation_results table
     await database`
       CREATE TABLE IF NOT EXISTS citation_results (
@@ -44,7 +45,7 @@ export async function initDatabase() {
         created_at TIMESTAMP DEFAULT NOW() NOT NULL
       )
     `;
-    
+
     console.log('[Database] Database tables initialized successfully');
   } catch (error) {
     console.error('[Database] Failed to initialize database:', error);
