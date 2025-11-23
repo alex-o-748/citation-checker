@@ -1,3 +1,5 @@
+import { extractUrlFromCitation } from './source-fetcher';
+
 export interface CitationInstance {
   claim: string;
   contextBefore: string;
@@ -9,6 +11,7 @@ export interface ReferenceInfo {
   id: string;
   type: 'ref' | 'sfn';
   preview?: string; // Optional preview of where it's used
+  hasUrl?: boolean;
 }
 
 /**
@@ -20,11 +23,41 @@ export function listAllReferences(wikitext: string): ReferenceInfo[] {
   const references: ReferenceInfo[] = [];
   const seenIds = new Set<string>();
 
-  // Extract named ref tags: <ref name="identifier">
-  const refPattern = /<ref\s+name\s*=\s*["']?([^"'\s>\/]+)["']?\s*(?:\/?>|>[\s\S]*?<\/ref>)/gi;
+  // Extract named ref tags with content: <ref name="identifier">content</ref>
+  const refWithContentPattern = /<ref\s+name\s*=\s*["']?([^"'\s>\/]+)["']?\s*>([\s\S]*?)<\/ref>/gi;
   let refMatch;
 
-  while ((refMatch = refPattern.exec(wikitext)) !== null) {
+  while ((refMatch = refWithContentPattern.exec(wikitext)) !== null) {
+    const refName = refMatch[1];
+    const refContent = refMatch[0];  // Full tag including content
+
+    if (!seenIds.has(refName)) {
+      seenIds.add(refName);
+
+      console.log('[Parser] Full ref content:', refContent.substring(0, 300));
+
+      // Try to get a preview of the content before this ref
+      const position = refMatch.index;
+      const beforeText = wikitext.substring(Math.max(0, position - 100), position);
+      const preview = cleanWikitext(beforeText).slice(-80).trim();
+
+      // Reuse existing URL extraction logic
+      const url = extractUrlFromCitation(refContent);
+      const hasUrl = url !== null;
+
+      references.push({
+        id: refName,
+        type: 'ref',
+        preview: preview || undefined,
+        hasUrl,
+      });
+    }
+  }
+
+  // Extract self-closing ref tags: <ref name="identifier" />
+  const refSelfClosingPattern = /<ref\s+name\s*=\s*["']?([^"'\s>\/]+)["']?\s*\/>/gi;
+
+  while ((refMatch = refSelfClosingPattern.exec(wikitext)) !== null) {
     const refName = refMatch[1];
 
     if (!seenIds.has(refName)) {
@@ -35,14 +68,15 @@ export function listAllReferences(wikitext: string): ReferenceInfo[] {
       const beforeText = wikitext.substring(Math.max(0, position - 100), position);
       const preview = cleanWikitext(beforeText).slice(-80).trim();
 
+      // Self-closing refs have no content, so no URL
       references.push({
         id: refName,
         type: 'ref',
         preview: preview || undefined,
+        hasUrl: false,
       });
     }
   }
-
   // Extract sfn citations: {{sfn|Author|Year|...}}
   const sfnPattern = /\{\{sfn\|[^}]+\}\}/gi;
   let sfnMatch;
@@ -62,6 +96,7 @@ export function listAllReferences(wikitext: string): ReferenceInfo[] {
         id: sfnTag,
         type: 'sfn',
         preview: preview || undefined,
+        hasUrl: false,
       });
     }
   }

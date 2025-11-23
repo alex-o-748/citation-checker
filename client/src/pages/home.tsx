@@ -18,7 +18,9 @@ export default function Home() {
   const [wikipediaUrl, setWikipediaUrl] = useState("");
   const [selectedReference, setSelectedReference] = useState("");
   const [sourceText, setSourceText] = useState("");
-
+  const [autoFetchedUrl, setAutoFetchedUrl] = useState<string | null>(null);
+  const [selectedRefHasUrl, setSelectedRefHasUrl] = useState(false);
+  
   // Results state
   const [results, setResults] = useState<CitationResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,9 +37,11 @@ export default function Home() {
     }
   };
 
-  const handleReferenceSelect = (refId: string) => {
+  const handleReferenceSelect = (refId: string, hasUrl?: boolean) => {
     setSelectedReference(refId);
+    setSelectedRefHasUrl(hasUrl || false);  // ADD THIS
     setCurrentStep('source');
+    setAutoFetchedUrl(null); 
     setResults(null);
   };
 
@@ -52,6 +56,7 @@ export default function Home() {
     setCurrentStep('reference');
     setSelectedReference('');
     setSourceText('');
+    setAutoFetchedUrl(null);
     setResults(null);
   };
 
@@ -61,6 +66,16 @@ export default function Home() {
     setResults(null);
 
     try {
+      // Prepare request body - only include sourceText if it has content
+      const requestBody: any = {
+        wikipediaUrl,
+        refTagName: selectedReference,
+      };
+
+      if (sourceText && sourceText.trim().length > 0) {
+        requestBody.sourceText = sourceText;
+      }
+
       const response = await apiRequest("POST", "/api/verify-citations", {
         wikipediaUrl,
         refTagName: selectedReference,
@@ -74,6 +89,16 @@ export default function Home() {
       }
 
       setResults(responseData.results);
+
+      if (responseData.sourceFetchedAutomatically && responseData.sourceUrl) {
+        setAutoFetchedUrl(responseData.sourceUrl);
+        toast({
+          title: "Source auto-fetched",
+          description: `Successfully fetched content from ${new URL(responseData.sourceUrl).hostname}`,
+        });
+      } else {
+        setAutoFetchedUrl(null);
+      }
 
       // Scroll to results
       setTimeout(() => {
@@ -167,7 +192,10 @@ export default function Home() {
               <CardHeader>
                 <CardTitle>Step 3: Enter Source Text</CardTitle>
                 <CardDescription>
-                  Paste the text from your source document to verify against
+                  {selectedRefHasUrl 
+                    ? "This reference has a URL - leave the text field empty to auto-fetch, or paste text manually if needed"
+                    : "Paste the text from your source document to verify against"
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -186,26 +214,35 @@ export default function Home() {
                     </Button>
                   </div>
 
+                  {autoFetchedUrl && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-1">
+                      <p className="text-sm font-medium text-green-900">✓ Source Auto-Fetched</p>
+                      <p className="text-sm text-green-700">
+                        Content was automatically fetched from: {new URL(autoFetchedUrl).hostname}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="source-text">Source Text</Label>
                     <Textarea
                       id="source-text"
-                      placeholder="Paste the full text of your source material here..."
+                      placeholder="Paste the full text of your source material here, or leave empty to auto-fetch from URL..."
                       value={sourceText}
                       onChange={(e) => setSourceText(e.target.value)}
-                      required
+                      required={false}
                       disabled={isLoading}
                       className="min-h-64 font-serif"
                     />
                     <p className="text-sm text-muted-foreground">
-                      Copy and paste the text from your source document (book, article, report, etc.)
+                      Paste the text from your source document, or leave empty to automatically fetch from the citation URL (if available)
                     </p>
                   </div>
 
                   <div className="flex gap-2">
                     <Button
                       type="submit"
-                      disabled={isLoading || !sourceText}
+                      disabled={isLoading}
                       className="flex-1"
                     >
                       {isLoading ? (

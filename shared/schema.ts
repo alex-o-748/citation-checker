@@ -6,7 +6,7 @@ import { createInsertSchema } from "drizzle-zod";
 export const verifyRequestSchema = z.object({
   wikipediaUrl: z.string().url(),
   refTagName: z.string().min(1),
-  sourceText: z.string().min(1).optional(),
+  sourceText: z.string().optional(),
 });
 
 export type VerifyRequest = z.infer<typeof verifyRequestSchema>;
