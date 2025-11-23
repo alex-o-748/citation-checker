@@ -4,11 +4,12 @@ interface ReferenceInfo {
   id: string;
   type: "ref" | "sfn";
   preview?: string;
+  hasUrl?: boolean;
 }
 
 interface ReferenceListProps {
   wikipediaUrl: string;
-  onSelectReference: (refId: string) => void;
+  onSelectReference: (refId: string, hasUrl?: boolean) => void; 
 }
 
 export default function ReferenceList({
@@ -147,7 +148,7 @@ export default function ReferenceList({
             {paginatedReferences.map((ref) => (
               <button
                 key={ref.id}
-                onClick={() => onSelectReference(ref.id)}
+                onClick={() => onSelectReference(ref.id, ref.hasUrl)}
                 className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
               >
                 <div className="flex items-start justify-between">
@@ -159,6 +160,11 @@ export default function ReferenceList({
                       <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
                         {ref.type}
                       </span>
+                      {ref.hasUrl && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700 flex items-center gap-1">
+                          🔗 Auto-fetch
+                        </span>
+                      )}
                     </div>
                     {ref.preview && (
                       <p className="text-sm text-gray-600 line-clamp-2">
