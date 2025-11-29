@@ -12,10 +12,18 @@ export interface SourceContent {
  * Handles both <ref> tags and {{sfn}} citations
  */
 export function extractUrlFromCitation(refTag: string): string | null {
-  console.log('[SourceFetcher] Extracting URL from citation:', refTag.substring(0, 100));
+  console.log('[SourceFetcher] Extracting URL from citation:', refTag.substring(0, 100) + '...');
 
-  // Look for url= parameter (common in cite web, cite news, etc.)
-  const urlMatch = refTag.match(/\burl\s*=\s*([^\s|}]+)/i);
+  // First, try archive-url (preferred as original URLs often go dead)
+  const archiveUrlMatch = refTag.match(/archive-url\s*=\s*([^|}\s]+)/i);
+  if (archiveUrlMatch) {
+    const url = archiveUrlMatch[1].trim();
+    console.log('[SourceFetcher] Found archive URL:', url);
+    return url;
+  }
+
+  // Fall back to regular url= parameter
+  const urlMatch = refTag.match(/(?:^|[|{}\s])url\s*=\s*([^|}\s]+)/i);
   if (urlMatch) {
     const url = urlMatch[1].trim();
     console.log('[SourceFetcher] Found URL:', url);

@@ -56,8 +56,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { wikipediaUrl, refTagName, sourceText: providedSourceText, claudeApiKey } = validationResult.data;
-
+      const { wikipediaUrl, refTagName, sourceText: providedSourceText, claudeApiKey, fullContent } = validationResult.data;
+      
       // Step 1: Fetch Wikipedia article wikitext
       let article;
       try {
@@ -68,10 +68,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Step 2: Get the full reference tag from the wikitext to extract URL
-      let refTagContent = refTagName;
-
-      // If it's a ref tag (not sfn), try to find the full tag in the wikitext
-      if (!refTagName.startsWith('{{sfn')) {
+      let refTagContent = fullContent || refTagName;
+      
+      // If no fullContent provided and it's a named ref, find it in wikitext
+      if (!fullContent && !refTagName.startsWith('{{sfn') && !refTagName.startsWith('__unnamed_')) {
         const refPattern = new RegExp(
           `<ref\\s+name\\s*=\\s*["']?${refTagName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\s*>(.*?)<\\/ref>`,
           'i'
@@ -111,8 +111,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Step 4: Extract citation instances
-      const citationInstances = extractCitationInstances(article.wikitext, refTagName);
-
+      const citationInstances = extractCitationInstances(
+        article.wikitext, 
+        refTagName,
+        fullContent  // New parameter
+      );
+      
       if (citationInstances.length === 0) {
         return res.json({
           results: [],

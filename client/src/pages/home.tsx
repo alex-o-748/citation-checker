@@ -18,6 +18,7 @@ export default function Home() {
   const [claudeApiKey, setClaudeApiKey] = useState("");
   const [wikipediaUrl, setWikipediaUrl] = useState("");
   const [selectedReference, setSelectedReference] = useState("");
+  const [selectedFullContent, setSelectedFullContent] = useState<string | undefined>(undefined); // ADD THIS
   const [sourceText, setSourceText] = useState("");
   const [autoFetchedUrl, setAutoFetchedUrl] = useState<string | null>(null);
   const [selectedRefHasUrl, setSelectedRefHasUrl] = useState(false);
@@ -49,9 +50,10 @@ export default function Home() {
     setCurrentStep('apikey');
   };
 
-  const handleReferenceSelect = (refId: string, hasUrl?: boolean) => {
+  const handleReferenceSelect = (refId: string, hasUrl?: boolean, fullContent?: string) => {
     setSelectedReference(refId);
-    setSelectedRefHasUrl(hasUrl || false);  // ADD THIS
+    setSelectedRefHasUrl(hasUrl || false);
+    setSelectedFullContent(fullContent);
     setCurrentStep('source');
     setAutoFetchedUrl(null); 
     setResults(null);
@@ -67,6 +69,7 @@ export default function Home() {
   const handleBackToReference = () => {
     setCurrentStep('reference');
     setSelectedReference('');
+    setSelectedFullContent(undefined);
     setSourceText('');
     setAutoFetchedUrl(null);
     setResults(null);
@@ -93,6 +96,7 @@ export default function Home() {
         refTagName: selectedReference,
         sourceText,
         claudeApiKey,
+        fullContent: selectedFullContent,
       });
 
       const responseData = await response.json();

@@ -5,11 +5,12 @@ interface ReferenceInfo {
   type: "ref" | "sfn";
   preview?: string;
   hasUrl?: boolean;
+  fullContent?: string;
 }
 
 interface ReferenceListProps {
   wikipediaUrl: string;
-  onSelectReference: (refId: string, hasUrl?: boolean) => void;
+  onSelectReference: (refId: string, hasUrl?: boolean, fullContent?: string) => void;
   onBack?: () => void;
 }
 
@@ -150,7 +151,7 @@ export default function ReferenceList({
             {paginatedReferences.map((ref) => (
               <button
                 key={ref.id}
-                onClick={() => onSelectReference(ref.id, ref.hasUrl)}
+                onClick={() => onSelectReference(ref.id, ref.hasUrl, ref.fullContent)}
                 className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
               >
                 <div className="flex items-start justify-between">

@@ -8,6 +8,7 @@ export const verifyRequestSchema = z.object({
   refTagName: z.string().min(1),
   sourceText: z.string().optional(),
   claudeApiKey: z.string().min(1, "Claude API key is required"),
+  fullContent: z.string().optional(), // Full ref tag for unnamed refs
 });
 
 export type VerifyRequest = z.infer<typeof verifyRequestSchema>;
