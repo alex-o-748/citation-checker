@@ -7,6 +7,7 @@ export const verifyRequestSchema = z.object({
   wikipediaUrl: z.string().url(),
   refTagName: z.string().min(1),
   sourceText: z.string().optional(),
+  claudeApiKey: z.string().min(1, "Claude API key is required"),
 });
 
 export type VerifyRequest = z.infer<typeof verifyRequestSchema>;

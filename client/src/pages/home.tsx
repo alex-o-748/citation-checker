@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ReferenceList from "@/components/ui/ReferenceList";
 import CitationResults, { type CitationResult } from "@/components/CitationResults";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Home() {
   // Step tracking
-  const [currentStep, setCurrentStep] = useState<'url' | 'reference' | 'source'>('url');
+  const [currentStep, setCurrentStep] = useState<'apikey' | 'url' | 'reference' | 'source'>('apikey');
 
   // Form state
+  const [claudeApiKey, setClaudeApiKey] = useState("");
   const [wikipediaUrl, setWikipediaUrl] = useState("");
   const [selectedReference, setSelectedReference] = useState("");
   const [sourceText, setSourceText] = useState("");
@@ -27,6 +28,13 @@ export default function Home() {
 
   const { toast } = useToast();
 
+  const handleApiKeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (claudeApiKey) {
+      setCurrentStep('url');
+    }
+  };
+
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (wikipediaUrl) {
@@ -35,6 +43,10 @@ export default function Home() {
       setSourceText('');
       setResults(null);
     }
+  };
+
+  const handleBackToApiKey = () => {
+    setCurrentStep('apikey');
   };
 
   const handleReferenceSelect = (refId: string, hasUrl?: boolean) => {
@@ -80,6 +92,7 @@ export default function Home() {
         wikipediaUrl,
         refTagName: selectedReference,
         sourceText,
+        claudeApiKey,
       });
 
       const responseData = await response.json();
@@ -144,6 +157,52 @@ export default function Home() {
         </div>
 
         <div className="space-y-6">
+          {/* Step 0: API Key */}
+          {currentStep === 'apikey' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Enter Your Claude API Key
+                </CardTitle>
+                <CardDescription>
+                  This tool uses Claude AI to verify citations. Enter your Anthropic API key to get started.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleApiKeySubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="claude-api-key">Claude API Key</Label>
+                    <Input
+                      id="claude-api-key"
+                      data-testid="input-claude-api-key"
+                      type="password"
+                      placeholder="sk-ant-..."
+                      value={claudeApiKey}
+                      onChange={(e) => setClaudeApiKey(e.target.value)}
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Your API key is only used for this session and is never stored. 
+                      Get your key from{" "}
+                      <a 
+                        href="https://console.anthropic.com/settings/keys" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        console.anthropic.com
+                      </a>
+                    </p>
+                  </div>
+                  <Button type="submit" data-testid="button-continue-with-key" disabled={!claudeApiKey}>
+                    Continue
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Step 1: Wikipedia URL */}
           {currentStep === 'url' && (
             <Card>
@@ -159,6 +218,7 @@ export default function Home() {
                     <Label htmlFor="wikipedia-url">Wikipedia Article URL</Label>
                     <Input
                       id="wikipedia-url"
+                      data-testid="input-wikipedia-url"
                       type="url"
                       placeholder="https://en.wikipedia.org/wiki/Article_Name"
                       value={wikipediaUrl}
@@ -169,9 +229,14 @@ export default function Home() {
                       Example: https://en.wikipedia.org/wiki/Great_Wall_of_China
                     </p>
                   </div>
-                  <Button type="submit" disabled={!wikipediaUrl}>
-                    Continue to Select Reference
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={!wikipediaUrl}>
+                      Continue to Select Reference
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleBackToApiKey}>
+                      Change API Key
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>

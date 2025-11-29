@@ -9,12 +9,14 @@ interface ReferenceInfo {
 
 interface ReferenceListProps {
   wikipediaUrl: string;
-  onSelectReference: (refId: string, hasUrl?: boolean) => void; 
+  onSelectReference: (refId: string, hasUrl?: boolean) => void;
+  onBack?: () => void;
 }
 
 export default function ReferenceList({
   wikipediaUrl,
   onSelectReference,
+  onBack,
 }: ReferenceListProps) {
   const [references, setReferences] = useState<ReferenceInfo[]>([]);
   const [loading, setLoading] = useState(false);
