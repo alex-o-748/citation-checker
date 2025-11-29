@@ -1,9 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 export interface VerificationResult {
   confidence: number;
   reasoning: string;
@@ -13,8 +9,12 @@ export interface VerificationResult {
 
 export async function verifyClaim(
   claim: string,
-  sourceText: string
+  sourceText: string,
+  apiKey: string
 ): Promise<VerificationResult> {
+  const anthropic = new Anthropic({
+    apiKey: apiKey,
+  });
   console.log('[Claude] Verifying claim:', claim.substring(0, 100) + '...');
   
     const prompt = `You are a fact-checking assistant. Your task is to verify if a claim from a Wikipedia article is supported by a source text.

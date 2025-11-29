@@ -5,6 +5,7 @@ import { fetchWikipediaWikitext } from "./services/wikipedia";
 import { extractCitationInstances, listAllReferences } from "./services/wikitext-parser";
 import { verifyClaim } from "./services/claude";
 import { fetchSourceFromCitation } from "./services/source-fetcher";
+import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // List all references in a Wikipedia article
@@ -46,13 +47,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Citation verification endpoint
   app.post("/api/verify-citations", async (req, res) => {
     try {
-      // Validate API key is configured
-      if (!process.env.ANTHROPIC_API_KEY) {
-        return res.status(503).json({
-          error: "Citation verification service is not configured. Please add ANTHROPIC_API_KEY to environment variables.",
-        });
-      }
-
       const validationResult = verifyRequestSchema.safeParse(req.body);
       
       if (!validationResult.success) {
@@ -62,7 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { wikipediaUrl, refTagName, sourceText: providedSourceText } = validationResult.data;
+      const { wikipediaUrl, refTagName, sourceText: providedSourceText, claudeApiKey } = validationResult.data;
 
       // Step 1: Fetch Wikipedia article wikitext
       let article;
@@ -129,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Step 3: Verify each claim with Claude
       const verificationPromises = citationInstances.map(async (instance, index) => {
         try {
-          const verification = await verifyClaim(instance.claim, sourceText);
+          const verification = await verifyClaim(instance.claim, sourceText, claudeApiKey);
           
           const result: CitationResult = {
             id: index + 1,
