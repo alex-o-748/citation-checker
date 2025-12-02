@@ -37,10 +37,11 @@
 
         console.log('[Parser] Full ref content:', refContent.substring(0, 300));
 
-        // Try to get a preview of the content before this ref
-        const position = refMatch.index;
-        const beforeText = wikitext.substring(Math.max(0, position - 100), position);
-        const preview = cleanWikitext(beforeText).slice(-80).trim();
+        // Get preview using claim extraction logic
+        const instances = extractCitationInstances(wikitext, refName);
+        const preview = instances.length > 0 
+          ? instances[0].claim.substring(0, 200) + (instances[0].claim.length > 200 ? '...' : '')
+          : undefined;
 
         // Reuse existing URL extraction logic
         const url = extractUrlFromCitation(refContent);
@@ -64,11 +65,12 @@
       if (!seenIds.has(refName)) {
         seenIds.add(refName);
 
-        // Try to get a preview of the content before this ref
-        const position = refMatch.index;
-        const beforeText = wikitext.substring(Math.max(0, position - 100), position);
-        const preview = cleanWikitext(beforeText).slice(-80).trim();
-
+        // Get preview using claim extraction logic
+        const instances = extractCitationInstances(wikitext, refName);
+        const preview = instances.length > 0 
+          ? instances[0].claim.substring(0, 200) + (instances[0].claim.length > 200 ? '...' : '')
+          : undefined;
+        
         // Self-closing refs have no content, so no URL
         references.push({
           id: refName,
@@ -90,10 +92,11 @@
       unnamedCounter++;
       const refId = `__unnamed_${unnamedCounter}`;
 
-      // Try to get a preview of the content before this ref
-      const position = unnamedMatch.index;
-      const beforeText = wikitext.substring(Math.max(0, position - 100), position);
-      const preview = cleanWikitext(beforeText).slice(-80).trim();
+      // Get preview using claim extraction logic
+      const instances = extractCitationInstances(wikitext, refId, refContent);
+      const preview = instances.length > 0 
+        ? instances[0].claim.substring(0, 200) + (instances[0].claim.length > 200 ? '...' : '')
+        : undefined;
 
       // Check if the ref content has a URL
       const url = extractUrlFromCitation(refContent);
@@ -118,11 +121,12 @@
       if (!seenIds.has(sfnTag)) {
         seenIds.add(sfnTag);
 
-        // Try to get a preview of the content before this sfn
-        const position = sfnMatch.index;
-        const beforeText = wikitext.substring(Math.max(0, position - 100), position);
-        const preview = cleanWikitext(beforeText).slice(-80).trim();
-
+        // Get preview using claim extraction logic
+        const instances = extractCitationInstances(wikitext, sfnTag);
+        const preview = instances.length > 0 
+          ? instances[0].claim.substring(0, 200) + (instances[0].claim.length > 200 ? '...' : '')
+          : undefined;
+        
         references.push({
           id: sfnTag,
           type: 'sfn',
