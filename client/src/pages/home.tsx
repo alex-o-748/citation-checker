@@ -107,23 +107,19 @@ export default function Home() {
 
     try {
       // Prepare request body - only include sourceText if it has content
-      const requestBody: any = {
+      const requestBody: Record<string, string | undefined> = {
         wikipediaUrl,
         refTagName: selectedReference,
+        apiKey: apiKey.trim(),
+        provider,
+        fullContent: selectedFullContent,
       };
 
       if (sourceText && sourceText.trim().length > 0) {
         requestBody.sourceText = sourceText;
       }
 
-      const response = await apiRequest("POST", "/api/verify-citations", {
-        wikipediaUrl,
-        refTagName: selectedReference,
-        sourceText,
-        apiKey,
-        provider,
-        fullContent: selectedFullContent,
-      });
+      const response = await apiRequest("POST", "/api/verify-citations", requestBody);
 
       const responseData = await response.json();
 
