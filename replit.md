@@ -95,7 +95,7 @@ Users select their preferred AI provider and provide their own API key. Keys are
   - Service: server/services/claude.ts
   - Get key from: console.anthropic.com
   
-- **OpenAI**: GPT-4o model with JSON response format
+- **OpenAI**: GPT-5 mini model with JSON response format
   - Service: server/services/openai.ts
   - Get key from: platform.openai.com
   
