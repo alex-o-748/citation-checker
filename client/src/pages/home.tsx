@@ -4,18 +4,43 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ReferenceList from "@/components/ui/ReferenceList";
 import CitationResults, { type CitationResult } from "@/components/CitationResults";
 import { FileText, Loader2, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
+type AIProvider = 'claude' | 'openai' | 'gemini';
+
+const providerInfo: Record<AIProvider, { name: string; placeholder: string; link: string; linkText: string }> = {
+  claude: {
+    name: "Claude (Anthropic)",
+    placeholder: "sk-ant-...",
+    link: "https://console.anthropic.com/settings/keys",
+    linkText: "console.anthropic.com",
+  },
+  openai: {
+    name: "OpenAI (GPT-4o)",
+    placeholder: "sk-...",
+    link: "https://platform.openai.com/api-keys",
+    linkText: "platform.openai.com",
+  },
+  gemini: {
+    name: "Google Gemini",
+    placeholder: "AI...",
+    link: "https://aistudio.google.com/apikey",
+    linkText: "aistudio.google.com",
+  },
+};
+
 export default function Home() {
   // Step tracking
   const [currentStep, setCurrentStep] = useState<'apikey' | 'url' | 'reference' | 'source'>('apikey');
 
   // Form state
-  const [claudeApiKey, setClaudeApiKey] = useState("");
+  const [provider, setProvider] = useState<AIProvider>('claude');
+  const [apiKey, setApiKey] = useState("");
   const [wikipediaUrl, setWikipediaUrl] = useState("");
   const [selectedReference, setSelectedReference] = useState("");
   const [selectedFullContent, setSelectedFullContent] = useState<string | undefined>(undefined); // ADD THIS
@@ -31,7 +56,7 @@ export default function Home() {
 
   const handleApiKeySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (claudeApiKey) {
+    if (apiKey) {
       setCurrentStep('url');
     }
   };
@@ -95,7 +120,8 @@ export default function Home() {
         wikipediaUrl,
         refTagName: selectedReference,
         sourceText,
-        claudeApiKey,
+        apiKey,
+        provider,
         fullContent: selectedFullContent,
       });
 
@@ -167,39 +193,58 @@ export default function Home() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Key className="h-5 w-5" />
-                  Enter Your Claude API Key
+                  Enter Your API Key
                 </CardTitle>
                 <CardDescription>
-                  This tool uses Claude AI to verify citations. Enter your Anthropic API key to get started.
+                  This tool uses AI to verify citations. Choose your preferred AI provider and enter your API key.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleApiKeySubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="claude-api-key">Claude API Key</Label>
+                    <Label htmlFor="provider-select">AI Provider</Label>
+                    <Select 
+                      value={provider} 
+                      onValueChange={(value: AIProvider) => {
+                        setProvider(value);
+                        setApiKey("");
+                      }}
+                    >
+                      <SelectTrigger id="provider-select" data-testid="select-provider">
+                        <SelectValue placeholder="Select AI provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="claude" data-testid="option-claude">Claude (Anthropic)</SelectItem>
+                        <SelectItem value="openai" data-testid="option-openai">OpenAI (GPT-4o)</SelectItem>
+                        <SelectItem value="gemini" data-testid="option-gemini">Google Gemini</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="api-key">{providerInfo[provider].name} API Key</Label>
                     <Input
-                      id="claude-api-key"
-                      data-testid="input-claude-api-key"
+                      id="api-key"
+                      data-testid="input-api-key"
                       type="password"
-                      placeholder="sk-ant-..."
-                      value={claudeApiKey}
-                      onChange={(e) => setClaudeApiKey(e.target.value)}
+                      placeholder={providerInfo[provider].placeholder}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
                       required
                     />
                     <p className="text-sm text-muted-foreground">
                       Your API key is only used for this session and is never stored. 
                       Get your key from{" "}
                       <a 
-                        href="https://console.anthropic.com/settings/keys" 
+                        href={providerInfo[provider].link}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-primary underline underline-offset-2"
                       >
-                        console.anthropic.com
+                        {providerInfo[provider].linkText}
                       </a>
                     </p>
                   </div>
-                  <Button type="submit" data-testid="button-continue-with-key" disabled={!claudeApiKey}>
+                  <Button type="submit" data-testid="button-continue-with-key" disabled={!apiKey}>
                     Continue
                   </Button>
                 </form>
@@ -238,7 +283,7 @@ export default function Home() {
                       Continue to Select Reference
                     </Button>
                     <Button type="button" variant="outline" onClick={handleBackToApiKey}>
-                      Change API Key
+                      Change Provider/Key
                     </Button>
                   </div>
                 </form>
