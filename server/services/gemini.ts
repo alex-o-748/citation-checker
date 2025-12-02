@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export interface VerificationResult {
   confidence: number;
@@ -12,8 +12,7 @@ export async function verifyClaim(
   sourceText: string,
   apiKey: string
 ): Promise<VerificationResult> {
-  const genAI = new GoogleGenerativeAI(apiKey.trim());
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
   
   console.log('[Gemini] Verifying claim:', claim.substring(0, 100) + '...');
   
@@ -56,9 +55,12 @@ Respond ONLY with valid JSON (no markdown code blocks):
 }`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const responseText = response.text();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+    });
+
+    const responseText = response.text || '';
 
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

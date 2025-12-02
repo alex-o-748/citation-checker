@@ -99,7 +99,7 @@ Users select their preferred AI provider and provide their own API key. Keys are
   - Service: server/services/openai.ts
   - Get key from: platform.openai.com
   
-- **Google Gemini**: gemini-1.5-flash model
+- **Google Gemini**: gemini-2.0-flash model (using new @google/genai SDK)
   - Service: server/services/gemini.ts
   - Get key from: aistudio.google.com
 
