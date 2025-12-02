@@ -21,7 +21,7 @@ const providerInfo: Record<AIProvider, { name: string; placeholder: string; link
     linkText: "console.anthropic.com",
   },
   openai: {
-    name: "OpenAI (GPT-4o)",
+    name: "OpenAI (GPT-5 mini)",
     placeholder: "sk-...",
     link: "https://platform.openai.com/api-keys",
     linkText: "platform.openai.com",
@@ -211,7 +211,7 @@ export default function Home() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="claude" data-testid="option-claude">Claude (Anthropic)</SelectItem>
-                        <SelectItem value="openai" data-testid="option-openai">OpenAI (GPT-4o)</SelectItem>
+                        <SelectItem value="openai" data-testid="option-openai">OpenAI (GPT-5 mini)</SelectItem>
                         <SelectItem value="gemini" data-testid="option-gemini">Google Gemini</SelectItem>
                       </SelectContent>
                     </Select>
