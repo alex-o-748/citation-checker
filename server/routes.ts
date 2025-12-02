@@ -1,11 +1,32 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { verifyRequestSchema, type CitationResult } from "@shared/schema";
+import { verifyRequestSchema, type CitationResult, type AIProvider } from "@shared/schema";
 import { fetchWikipediaWikitext } from "./services/wikipedia";
 import { extractCitationInstances, listAllReferences } from "./services/wikitext-parser";
-import { verifyClaim } from "./services/claude";
+import { verifyClaim as verifyWithClaude } from "./services/claude";
+import { verifyClaim as verifyWithOpenAI } from "./services/openai";
+import { verifyClaim as verifyWithGemini } from "./services/gemini";
 import { fetchSourceFromCitation } from "./services/source-fetcher";
 import { storage } from "./storage";
+
+async function verifyClaim(
+  claim: string,
+  sourceText: string,
+  apiKey: string,
+  provider: AIProvider
+) {
+  const trimmedKey = apiKey.trim();
+  
+  switch (provider) {
+    case 'openai':
+      return verifyWithOpenAI(claim, sourceText, trimmedKey);
+    case 'gemini':
+      return verifyWithGemini(claim, sourceText, trimmedKey);
+    case 'claude':
+    default:
+      return verifyWithClaude(claim, sourceText, trimmedKey);
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // List all references in a Wikipedia article
@@ -56,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { wikipediaUrl, refTagName, sourceText: providedSourceText, claudeApiKey, fullContent } = validationResult.data;
+      const { wikipediaUrl, refTagName, sourceText: providedSourceText, apiKey, provider, fullContent } = validationResult.data;
       
       // Step 1: Fetch Wikipedia article wikitext
       let article;
@@ -124,10 +145,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Step 3: Verify each claim with Claude
+      // Step 5: Verify each claim with the selected AI provider
       const verificationPromises = citationInstances.map(async (instance, index) => {
         try {
-          const verification = await verifyClaim(instance.claim, sourceText, claudeApiKey);
+          const verification = await verifyClaim(instance.claim, sourceText, apiKey, provider);
           
           const result: CitationResult = {
             id: index + 1,

@@ -13,7 +13,7 @@ export async function verifyClaim(
   apiKey: string
 ): Promise<VerificationResult> {
   const anthropic = new Anthropic({
-    apiKey: apiKey,
+    apiKey: apiKey.trim(),
   });
   console.log('[Claude] Verifying claim:', claim.substring(0, 100) + '...');
   
