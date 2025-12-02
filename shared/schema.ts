@@ -2,12 +2,17 @@ import { z } from "zod";
 import { pgTable, serial, text, integer, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
+// AI Provider types
+export const aiProviderSchema = z.enum(['claude', 'openai', 'gemini']);
+export type AIProvider = z.infer<typeof aiProviderSchema>;
+
 // Citation verification request
 export const verifyRequestSchema = z.object({
   wikipediaUrl: z.string().url(),
   refTagName: z.string().min(1),
   sourceText: z.string().optional(),
-  claudeApiKey: z.string().min(1, "Claude API key is required"),
+  apiKey: z.string().min(1, "API key is required"),
+  provider: aiProviderSchema.default('claude'),
   fullContent: z.string().optional(), // Full ref tag for unnamed refs
 });
 
