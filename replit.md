@@ -2,7 +2,13 @@
 
 ## Overview
 
-This is a Wikipedia citation verification tool that uses AI to validate whether citations in Wikipedia articles are accurately supported by their source materials. Users input a Wikipedia URL, specify a citation reference tag, and provide the source text. The system then extracts all instances where that citation is used, and uses Claude AI to verify each claim against the provided source material, returning confidence scores and detailed analysis.
+This is a Wikipedia citation verification tool that uses AI to validate whether citations in Wikipedia articles are accurately supported by their source materials. Users input a Wikipedia URL, specify a citation reference tag, and provide the source text. The system then extracts all instances where that citation is used, and uses AI to verify each claim against the provided source material, returning confidence scores and detailed analysis.
+
+**Key Features:**
+- **Multi-provider AI support**: Choose between Claude (Anthropic), OpenAI (GPT-4o), or Google Gemini for verification
+- **Bring Your Own Key (BYOK)**: Users provide their own API keys - keys are never stored, only used for the session
+- **Auto-fetch sources**: Automatically retrieves source content from URLs embedded in citations
+- **Confidence scoring**: AI provides 0-100 confidence scores with detailed reasoning
 
 The application is designed as a utility-first tool with a focus on clarity and reading comfort, inspired by Linear and Notion's clean interfaces with Material Design patterns for data display.
 
@@ -82,11 +88,22 @@ Preferred communication style: Simple, everyday language.
 
 ### External Dependencies
 
-**AI Service**: Anthropic Claude API (claude-sonnet-4-5 model)
-- Used for fact-checking claims against source text
-- Returns structured JSON with confidence scores, relevant excerpts, reasoning, and support status
-- Requires ANTHROPIC_API_KEY environment variable
-- Model updated November 2024 to use latest Claude Sonnet 4.5 (best coding model)
+**AI Services (BYOK - Bring Your Own Key)**:
+Users select their preferred AI provider and provide their own API key. Keys are stored only in browser session state and transmitted securely via HTTPS.
+
+- **Claude (Anthropic)**: claude-sonnet-4-5 model - excellent at nuanced text analysis
+  - Service: server/services/claude.ts
+  - Get key from: console.anthropic.com
+  
+- **OpenAI**: GPT-4o model with JSON response format
+  - Service: server/services/openai.ts
+  - Get key from: platform.openai.com
+  
+- **Google Gemini**: gemini-1.5-flash model
+  - Service: server/services/gemini.ts
+  - Get key from: aistudio.google.com
+
+All AI services return structured JSON with confidence scores, relevant excerpts, reasoning, and support status.
 
 **Third-party APIs**:
 - Wikipedia API (en.wikipedia.org/w/api.php) for fetching article wikitext
