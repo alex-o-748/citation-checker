@@ -47,7 +47,7 @@ export default function Home() {
   const [sourceText, setSourceText] = useState("");
   const [autoFetchedUrl, setAutoFetchedUrl] = useState<string | null>(null);
   const [selectedRefHasUrl, setSelectedRefHasUrl] = useState(false);
-  
+
   // Results state
   const [results, setResults] = useState<CitationResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -401,6 +401,15 @@ export default function Home() {
       <footer className="mt-16 border-t py-8">
         <div className="mx-auto max-w-7xl px-6 text-center text-sm text-muted-foreground md:px-8">
           <p>Powered by AI-based text comparison</p>
+          <p className="mt-2">
+            Questions or feedback?{" "}
+            <a 
+              href="mailto:wikicitechecker@gmail.com"
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              wikicitechecker@gmail.com
+            </a>
+          </p>
         </div>
       </footer>
     </div>
