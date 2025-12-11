@@ -6,25 +6,35 @@ import { extractCitationInstances, listAllReferences } from "./services/wikitext
 import { verifyClaim as verifyWithClaude } from "./services/claude";
 import { verifyClaim as verifyWithOpenAI } from "./services/openai";
 import { verifyClaim as verifyWithGemini } from "./services/gemini";
+import { verifyClaim as verifyWithPublicAI } from "./services/publicai";
 import { fetchSourceFromCitation } from "./services/source-fetcher";
 import { storage } from "./storage";
 
 async function verifyClaim(
   claim: string,
   sourceText: string,
-  apiKey: string,
+  apiKey: string | undefined,
   provider: AIProvider
 ) {
-  const trimmedKey = apiKey.trim();
-  
   switch (provider) {
+    case 'publicai':
+      // Use server-side API key for Public.ai
+      const publicAiKey = process.env.PUBLICAI_API_KEY;
+      if (!publicAiKey) {
+        throw new Error('Public.ai API key not configured on server');
+      }
+      return verifyWithPublicAI(claim, sourceText, publicAiKey);
     case 'openai':
-      return verifyWithOpenAI(claim, sourceText, trimmedKey);
+      if (!apiKey) throw new Error('OpenAI API key is required');
+      return verifyWithOpenAI(claim, sourceText, apiKey.trim());
     case 'gemini':
-      return verifyWithGemini(claim, sourceText, trimmedKey);
+      if (!apiKey) throw new Error('Gemini API key is required');
+      return verifyWithGemini(claim, sourceText, apiKey.trim());
     case 'claude':
+      if (!apiKey) throw new Error('Claude API key is required');
+      return verifyWithClaude(claim, sourceText, apiKey.trim());
     default:
-      return verifyWithClaude(claim, sourceText, trimmedKey);
+      throw new Error(`Unknown provider: ${provider}`);
   }
 }
 
