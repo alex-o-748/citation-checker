@@ -91,11 +91,6 @@ Preferred communication style: Simple, everyday language.
 **AI Services (BYOK - Bring Your Own Key)**:
 Users select their preferred AI provider and provide their own API key. Keys are stored only in browser session state and transmitted securely via HTTPS.
 
-- **Public.ai (Default - Free)**: swiss-ai/apertus-8b-instruct model - no API key required
-  - Service: server/services/publicai.ts
-  - Uses server-side API key stored in PUBLICAI_API_KEY env var
-  - Rate limit: 20 requests/min
-  
 - **Claude (Anthropic)**: claude-sonnet-4-5 model - excellent at nuanced text analysis
   - Service: server/services/claude.ts
   - Get key from: console.anthropic.com

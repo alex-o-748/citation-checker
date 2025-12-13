@@ -11,45 +11,35 @@ import { FileText, Loader2, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-type AIProvider = 'publicai' | 'claude' | 'openai' | 'gemini';
+type AIProvider = 'claude' | 'openai' | 'gemini';
 
-const providerInfo: Record<AIProvider, { name: string; placeholder: string; link: string; linkText: string; requiresKey: boolean }> = {
-  publicai: {
-    name: "Public.ai (Free)",
-    placeholder: "",
-    link: "https://publicai.co",
-    linkText: "publicai.co",
-    requiresKey: false,
-  },
+const providerInfo: Record<AIProvider, { name: string; placeholder: string; link: string; linkText: string }> = {
   claude: {
     name: "Claude (Anthropic)",
     placeholder: "sk-ant-...",
     link: "https://console.anthropic.com/settings/keys",
     linkText: "console.anthropic.com",
-    requiresKey: true,
   },
   openai: {
     name: "OpenAI (GPT-5 mini)",
     placeholder: "sk-...",
     link: "https://platform.openai.com/api-keys",
     linkText: "platform.openai.com",
-    requiresKey: true,
   },
   gemini: {
     name: "Google Gemini",
     placeholder: "AI...",
     link: "https://aistudio.google.com/apikey",
     linkText: "aistudio.google.com",
-    requiresKey: true,
   },
 };
 
 export default function Home() {
-  // Step tracking - start at 'url' if using default publicai (no API key needed)
-  const [currentStep, setCurrentStep] = useState<'apikey' | 'url' | 'reference' | 'source'>('url');
+  // Step tracking
+  const [currentStep, setCurrentStep] = useState<'apikey' | 'url' | 'reference' | 'source'>('apikey');
 
   // Form state
-  const [provider, setProvider] = useState<AIProvider>('publicai');
+  const [provider, setProvider] = useState<AIProvider>('claude');
   const [apiKey, setApiKey] = useState("");
   const [wikipediaUrl, setWikipediaUrl] = useState("");
   const [selectedReference, setSelectedReference] = useState("");
@@ -57,7 +47,7 @@ export default function Home() {
   const [sourceText, setSourceText] = useState("");
   const [autoFetchedUrl, setAutoFetchedUrl] = useState<string | null>(null);
   const [selectedRefHasUrl, setSelectedRefHasUrl] = useState(false);
-
+  
   // Results state
   const [results, setResults] = useState<CitationResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,23 +56,9 @@ export default function Home() {
 
   const handleApiKeySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // For publicai, no API key is required
-    if (!providerInfo[provider].requiresKey || apiKey) {
+    if (apiKey) {
       setCurrentStep('url');
     }
-  };
-  
-  const handleProviderChange = (value: AIProvider) => {
-    setProvider(value);
-    setApiKey("");
-    // If switching to publicai, skip the apikey step
-    if (!providerInfo[value].requiresKey && currentStep === 'apikey') {
-      setCurrentStep('url');
-    }
-  };
-  
-  const handleChangeProvider = () => {
-    setCurrentStep('apikey');
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
@@ -213,10 +189,10 @@ export default function Home() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Key className="h-5 w-5" />
-                  Choose AI Provider
+                  Enter Your API Key
                 </CardTitle>
                 <CardDescription>
-                  Select your preferred AI provider. Public.ai is free and requires no API key.
+                  This tool uses AI to verify citations. Choose your preferred AI provider and enter your API key.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -225,50 +201,46 @@ export default function Home() {
                     <Label htmlFor="provider-select">AI Provider</Label>
                     <Select 
                       value={provider} 
-                      onValueChange={handleProviderChange}
+                      onValueChange={(value: AIProvider) => {
+                        setProvider(value);
+                        setApiKey("");
+                      }}
                     >
                       <SelectTrigger id="provider-select" data-testid="select-provider">
                         <SelectValue placeholder="Select AI provider" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="publicai" data-testid="option-publicai">Public.ai (Free - No API key needed)</SelectItem>
                         <SelectItem value="claude" data-testid="option-claude">Claude (Anthropic)</SelectItem>
                         <SelectItem value="openai" data-testid="option-openai">OpenAI (GPT-5 mini)</SelectItem>
                         <SelectItem value="gemini" data-testid="option-gemini">Google Gemini</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  {providerInfo[provider].requiresKey && (
-                    <div className="space-y-2">
-                      <Label htmlFor="api-key">{providerInfo[provider].name} API Key</Label>
-                      <Input
-                        id="api-key"
-                        data-testid="input-api-key"
-                        type="password"
-                        placeholder={providerInfo[provider].placeholder}
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        required
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Your API key is only used for this session and is never stored. 
-                        Get your key from{" "}
-                        <a 
-                          href={providerInfo[provider].link}
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary underline underline-offset-2"
-                        >
-                          {providerInfo[provider].linkText}
-                        </a>
-                      </p>
-                    </div>
-                  )}
-                  <Button 
-                    type="submit" 
-                    data-testid="button-continue-with-key" 
-                    disabled={providerInfo[provider].requiresKey && !apiKey}
-                  >
+                  <div className="space-y-2">
+                    <Label htmlFor="api-key">{providerInfo[provider].name} API Key</Label>
+                    <Input
+                      id="api-key"
+                      data-testid="input-api-key"
+                      type="password"
+                      placeholder={providerInfo[provider].placeholder}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Your API key is only used for this session and is never stored. 
+                      Get your key from{" "}
+                      <a 
+                        href={providerInfo[provider].link}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        {providerInfo[provider].linkText}
+                      </a>
+                    </p>
+                  </div>
+                  <Button type="submit" data-testid="button-continue-with-key" disabled={!apiKey}>
                     Continue
                   </Button>
                 </form>
@@ -428,27 +400,7 @@ export default function Home() {
 
       <footer className="mt-16 border-t py-8">
         <div className="mx-auto max-w-7xl px-6 text-center text-sm text-muted-foreground md:px-8">
-          <p>
-            Powered by AI-based text comparison. Uses{" "}
-            <a 
-              href="https://publicai.co/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline underline-offset-2 hover:text-primary/80"
-            >
-              Public AI
-            </a>
-            {" "}or a model of your choice.
-          </p>
-          <p className="mt-2">
-            Questions or feedback?{" "}
-            <a 
-              href="mailto:wikicitechecker@gmail.com"
-              className="text-primary underline underline-offset-2 hover:text-primary/80"
-            >
-              wikicitechecker@gmail.com
-            </a>
-          </p>
+          <p>Powered by AI-based text comparison</p>
         </div>
       </footer>
     </div>
