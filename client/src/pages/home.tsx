@@ -428,7 +428,18 @@ export default function Home() {
 
       <footer className="mt-16 border-t py-8">
         <div className="mx-auto max-w-7xl px-6 text-center text-sm text-muted-foreground md:px-8">
-          <p>Powered by AI-based text comparison. Uses public.ai or a model of your choice.</p>
+          <p>
+            Powered by AI-based text comparison. Uses{" "}
+            <a 
+              href="https://publicai.co/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              Public AI
+            </a>
+            {" "}or a model of your choice.
+          </p>
           <p className="mt-2">
             Questions or feedback?{" "}
             <a 
