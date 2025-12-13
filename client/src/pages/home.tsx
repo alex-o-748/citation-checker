@@ -428,7 +428,27 @@ export default function Home() {
 
       <footer className="mt-16 border-t py-8">
         <div className="mx-auto max-w-7xl px-6 text-center text-sm text-muted-foreground md:px-8">
-          <p>Powered by AI-based text comparison</p>
+          <p>
+            Powered by{" "}
+            <a 
+              href="https://publicai.co" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              Public.ai
+            </a>
+            {" "}using the{" "}
+            <a 
+              href="https://huggingface.co/swiss-ai/apertus-8b-instruct" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              swiss-ai/apertus-8b-instruct
+            </a>
+            {" "}model
+          </p>
           <p className="mt-2">
             Questions or feedback?{" "}
             <a 
