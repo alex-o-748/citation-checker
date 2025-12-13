@@ -3,7 +3,7 @@ import { pgTable, serial, text, integer, timestamp, varchar } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 
 // AI Provider types
-export const aiProviderSchema = z.enum(['claude', 'openai', 'gemini']);
+export const aiProviderSchema = z.enum(['publicai', 'claude', 'openai', 'gemini']);
 export type AIProvider = z.infer<typeof aiProviderSchema>;
 
 // Citation verification request
@@ -11,8 +11,8 @@ export const verifyRequestSchema = z.object({
   wikipediaUrl: z.string().url(),
   refTagName: z.string().min(1),
   sourceText: z.string().optional(),
-  apiKey: z.string().min(1, "API key is required"),
-  provider: aiProviderSchema.default('claude'),
+  apiKey: z.string().optional(), // Optional for publicai (uses server-side key)
+  provider: aiProviderSchema.default('publicai'),
   fullContent: z.string().optional(), // Full ref tag for unnamed refs
 });
 

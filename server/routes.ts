@@ -6,25 +6,35 @@ import { extractCitationInstances, listAllReferences } from "./services/wikitext
 import { verifyClaim as verifyWithClaude } from "./services/claude";
 import { verifyClaim as verifyWithOpenAI } from "./services/openai";
 import { verifyClaim as verifyWithGemini } from "./services/gemini";
+import { verifyClaim as verifyWithPublicAI } from "./services/publicai";
 import { fetchSourceFromCitation } from "./services/source-fetcher";
 import { storage } from "./storage";
 
 async function verifyClaim(
   claim: string,
   sourceText: string,
-  apiKey: string,
+  apiKey: string | undefined,
   provider: AIProvider
 ) {
-  const trimmedKey = apiKey.trim();
-  
   switch (provider) {
+    case 'publicai':
+      // Use server-side API key for Public.ai
+      const publicAiKey = process.env.PUBLICAI_API_KEY;
+      if (!publicAiKey) {
+        throw new Error('Public.ai API key not configured on server');
+      }
+      return verifyWithPublicAI(claim, sourceText, publicAiKey);
     case 'openai':
-      return verifyWithOpenAI(claim, sourceText, trimmedKey);
+      if (!apiKey) throw new Error('OpenAI API key is required');
+      return verifyWithOpenAI(claim, sourceText, apiKey.trim());
     case 'gemini':
-      return verifyWithGemini(claim, sourceText, trimmedKey);
+      if (!apiKey) throw new Error('Gemini API key is required');
+      return verifyWithGemini(claim, sourceText, apiKey.trim());
     case 'claude':
+      if (!apiKey) throw new Error('Claude API key is required');
+      return verifyWithClaude(claim, sourceText, apiKey.trim());
     default:
-      return verifyWithClaude(claim, sourceText, trimmedKey);
+      throw new Error(`Unknown provider: ${provider}`);
   }
 }
 
@@ -64,12 +74,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Citation verification endpoint
   app.post("/api/verify-citations", async (req, res) => {
     try {
       const validationResult = verifyRequestSchema.safeParse(req.body);
-      
+
       if (!validationResult.success) {
         return res.status(400).json({ 
           error: "Invalid request data",
@@ -78,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { wikipediaUrl, refTagName, sourceText: providedSourceText, apiKey, provider, fullContent } = validationResult.data;
-      
+
       // Step 1: Fetch Wikipedia article wikitext
       let article;
       try {
@@ -90,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Step 2: Get the full reference tag from the wikitext to extract URL
       let refTagContent = fullContent || refTagName;
-      
+
       // If no fullContent provided and it's a named ref, find it in wikitext
       if (!fullContent && !refTagName.startsWith('{{sfn') && !refTagName.startsWith('__unnamed_')) {
         const refPattern = new RegExp(
@@ -137,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         refTagName,
         fullContent  // New parameter
       );
-      
+
       if (citationInstances.length === 0) {
         return res.json({
           results: [],
@@ -149,7 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const verificationPromises = citationInstances.map(async (instance, index) => {
         try {
           const verification = await verifyClaim(instance.claim, sourceText, apiKey, provider);
-          
+
           const result: CitationResult = {
             id: index + 1,
             wikipediaClaim: instance.claim,
@@ -158,13 +168,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             supportStatus: verification.supportStatus,
             reasoning: verification.reasoning,
           };
-          
+
           return result;
         } catch (error) {
           console.error(`Failed to verify claim ${index + 1}:`, error);
-          
+
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
-          
+
           // Return a low-confidence result if verification fails
           return {
             id: index + 1,
