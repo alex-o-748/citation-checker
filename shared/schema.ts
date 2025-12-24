@@ -3,7 +3,7 @@ import { pgTable, serial, text, integer, timestamp, varchar } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 
 // AI Provider types
-export const aiProviderSchema = z.enum(['publicai', 'claude', 'openai', 'gemini']);
+export const aiProviderSchema = z.enum(['publicai', 'ollama', 'claude', 'openai', 'gemini']);
 export type AIProvider = z.infer<typeof aiProviderSchema>;
 
 // Citation verification request

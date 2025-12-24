@@ -11,7 +11,7 @@ import { FileText, Loader2, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-type AIProvider = 'publicai' | 'claude' | 'openai' | 'gemini';
+type AIProvider = 'publicai' | 'ollama' | 'claude' | 'openai' | 'gemini';
 
 const providerInfo: Record<AIProvider, { name: string; placeholder: string; link: string; linkText: string; requiresKey: boolean }> = {
   publicai: {
@@ -19,6 +19,13 @@ const providerInfo: Record<AIProvider, { name: string; placeholder: string; link
     placeholder: "",
     link: "https://publicai.co",
     linkText: "publicai.co",
+    requiresKey: false,
+  },
+  ollama: {
+    name: "Ollama (Free)",
+    placeholder: "",
+    link: "https://ollama.com",
+    linkText: "ollama.com",
     requiresKey: false,
   },
   claude: {
@@ -232,6 +239,7 @@ export default function Home() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="publicai" data-testid="option-publicai">Public.ai (Free - No API key needed)</SelectItem>
+                        <SelectItem value="ollama" data-testid="option-ollama">Ollama (Free - No API key needed)</SelectItem>
                         <SelectItem value="claude" data-testid="option-claude">Claude (Anthropic)</SelectItem>
                         <SelectItem value="openai" data-testid="option-openai">OpenAI (GPT-5 mini)</SelectItem>
                         <SelectItem value="gemini" data-testid="option-gemini">Google Gemini</SelectItem>

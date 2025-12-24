@@ -7,6 +7,7 @@ import { verifyClaim as verifyWithClaude } from "./services/claude";
 import { verifyClaim as verifyWithOpenAI } from "./services/openai";
 import { verifyClaim as verifyWithGemini } from "./services/gemini";
 import { verifyClaim as verifyWithPublicAI } from "./services/publicai";
+import { verifyClaim as verifyWithOllama } from "./services/ollama";
 import { fetchSourceFromCitation } from "./services/source-fetcher";
 import { storage } from "./storage";
 
@@ -33,6 +34,13 @@ async function verifyClaim(
     case 'claude':
       if (!apiKey) throw new Error('Claude API key is required');
       return verifyWithClaude(claim, sourceText, apiKey.trim());
+    case 'ollama':
+      // Use server-side API key for Public.ai
+    const ollamaKey = process.env.OLLAMA_API_KEY;
+    if (!ollamaKey) {
+      throw new Error('Ollama API key not configured on server');
+    }
+      return verifyWithOllama(claim, sourceText, ollamaKey);
     default:
       throw new Error(`Unknown provider: ${provider}`);
   }
