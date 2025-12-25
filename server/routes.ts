@@ -204,6 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           refTagName,
           sourceText,
           sourceUrl,
+          provider,
           results.map(r => ({
             wikipediaClaim: r.wikipediaClaim,
             sourceExcerpt: r.sourceExcerpt,

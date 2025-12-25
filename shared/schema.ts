@@ -47,6 +47,7 @@ export const verificationChecks = pgTable("verification_checks", {
   refTagName: text("ref_tag_name").notNull(),
   sourceText: text("source_text").notNull(),
   sourceUrl: text("source_url"),
+  aiProvider: varchar("ai_provider", { length: 50 }).notNull().default('publicai'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

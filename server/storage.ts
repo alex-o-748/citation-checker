@@ -33,6 +33,7 @@ export interface IStorage {
     refTagName: string,
     sourceText: string,
     sourceUrl: string | undefined,
+    aiProvider: string,
     results: Array<{
       wikipediaClaim: string;
       sourceExcerpt: string;
@@ -49,6 +50,7 @@ export class DbStorage implements IStorage {
     refTagName: string,
     sourceText: string,
     sourceUrl: string | undefined,
+    aiProvider: string,
     results: Array<{
       wikipediaClaim: string;
       sourceExcerpt: string;
@@ -76,7 +78,8 @@ export class DbStorage implements IStorage {
       wikipediaUrl,
       refTagName,
       sourceText,
-      sourceUrl, // Added sourceUrl field
+      sourceUrl,
+      aiProvider,
     }).returning();
 
     // Insert all citation results
