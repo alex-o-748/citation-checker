@@ -332,14 +332,16 @@ export default function Home() {
             />
           )}
 
-          {/* Step 3: Source Text Input */}
+          {/* Step 3: Source Text Input (or auto-fetch confirmation) */}
           {currentStep === 'source' && (
             <Card>
               <CardHeader>
-                <CardTitle>Step 3: Enter Source Text</CardTitle>
+                <CardTitle>
+                  {selectedRefHasUrl ? "Step 3: Verify Citation" : "Step 3: Enter Source Text"}
+                </CardTitle>
                 <CardDescription>
-                  {selectedRefHasUrl 
-                    ? "This reference has a URL - leave the text field empty to auto-fetch, or paste text manually if needed"
+                  {selectedRefHasUrl
+                    ? "The source content will be automatically fetched from the citation URL"
                     : "Paste the text from your source document to verify against"
                   }
                 </CardDescription>
@@ -369,21 +371,23 @@ export default function Home() {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="source-text">Source Text</Label>
-                    <Textarea
-                      id="source-text"
-                      placeholder="Paste the full text of your source material here, or leave empty to auto-fetch from URL..."
-                      value={sourceText}
-                      onChange={(e) => setSourceText(e.target.value)}
-                      required={false}
-                      disabled={isLoading}
-                      className="min-h-64 font-serif"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Paste the text from your source document, or leave empty to automatically fetch from the citation URL (if available)
-                    </p>
-                  </div>
+                  {!selectedRefHasUrl && (
+                    <div className="space-y-2">
+                      <Label htmlFor="source-text">Source Text</Label>
+                      <Textarea
+                        id="source-text"
+                        placeholder="Paste the full text of your source material here..."
+                        value={sourceText}
+                        onChange={(e) => setSourceText(e.target.value)}
+                        required={true}
+                        disabled={isLoading}
+                        className="min-h-64 font-serif"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Paste the text from your source document to verify against
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     <Button
