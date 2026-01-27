@@ -1,15 +1,22 @@
 import axios from 'axios';
 
-const WIKIPEDIA_API_URL = 'https://en.wikipedia.org/w/api.php';
-
 export interface WikipediaArticle {
   title: string;
   wikitext: string;
 }
 
+function getWikipediaApiUrl(articleUrl: string): string {
+  // Extract the language subdomain from the Wikipedia URL
+  // Example: https://ru.wikipedia.org/wiki/Article -> ru
+  // Example: https://en.wikipedia.org/wiki/Article -> en
+  const langMatch = articleUrl.match(/https?:\/\/([a-z-]+)\.wikipedia\.org/i);
+  const lang = langMatch ? langMatch[1].toLowerCase() : 'en';
+  return `https://${lang}.wikipedia.org/w/api.php`;
+}
+
 export async function fetchWikipediaWikitext(articleUrl: string): Promise<WikipediaArticle> {
   console.log('[Wikipedia] Fetching article from URL:', articleUrl);
-  
+
   // Extract article title from URL
   // Example: https://en.wikipedia.org/wiki/Great_Wall_of_China -> Great_Wall_of_China
   const match = articleUrl.match(/\/wiki\/([^?#]+)/);
@@ -20,10 +27,15 @@ export async function fetchWikipediaWikitext(articleUrl: string): Promise<Wikipe
   // Keep the title as-is from the URL (preserving underscores and URL encoding)
   const title = decodeURIComponent(match[1]);
 
+  // Get the appropriate Wikipedia API URL based on the language subdomain
+  const apiUrl = getWikipediaApiUrl(articleUrl);
+
+  console.log('[Wikipedia] Using API URL:', apiUrl);
+
   try {
     // Fetch the wikitext using Wikipedia API
     // Wikipedia requires a descriptive User-Agent with contact info per their API guidelines
-    const response = await axios.get(WIKIPEDIA_API_URL, {
+    const response = await axios.get(apiUrl, {
       params: {
         action: 'query',
         titles: title,
