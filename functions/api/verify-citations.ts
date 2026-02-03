@@ -3,6 +3,7 @@ import { extractCitationInstances } from '../lib/wikitext-parser';
 import { fetchSourceFromCitation } from '../lib/source-fetcher';
 import { verifyClaim, type AIProvider } from '../lib/ai-providers';
 import { saveVerificationCheck } from '../lib/storage';
+import { jsonResponse, errorResponse, handleCors } from '../lib/response';
 
 interface Env {
   DATABASE_URL: string;
@@ -28,6 +29,11 @@ interface CitationResult {
   reasoning?: string;
 }
 
+// Handle CORS preflight
+export const onRequestOptions: PagesFunction<Env> = async () => {
+  return handleCors();
+};
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
@@ -36,10 +42,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     // Validate request
     if (!body.wikipediaUrl || !body.refTagName) {
-      return Response.json(
-        { error: 'Invalid request data: wikipediaUrl and refTagName are required' },
-        { status: 400 }
-      );
+      return errorResponse('Invalid request data: wikipediaUrl and refTagName are required', 400);
     }
 
     const {
@@ -57,7 +60,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       article = await fetchWikipediaWikitext(wikipediaUrl);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch Wikipedia article';
-      return Response.json({ error: message }, { status: 400 });
+      return errorResponse(message, 400);
     }
 
     // Step 2: Get the full reference tag from the wikitext to extract URL
@@ -90,17 +93,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           sourceFetchedAutomatically = true;
           console.log('[API] Successfully auto-fetched source from:', sourceUrl);
         } else {
-          return Response.json(
-            { error: 'No URL found in citation and no source text provided. Please provide the source text manually.' },
-            { status: 400 }
-          );
+          return errorResponse('No URL found in citation and no source text provided. Please provide the source text manually.', 400);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to fetch source';
-        return Response.json(
-          { error: `Could not auto-fetch source: ${message}. Please provide the source text manually.` },
-          { status: 400 }
-        );
+        return errorResponse(`Could not auto-fetch source: ${message}. Please provide the source text manually.`, 400);
       }
     }
 
@@ -108,7 +105,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const citationInstances = extractCitationInstances(article.wikitext, refTagName, fullContent);
 
     if (citationInstances.length === 0) {
-      return Response.json({
+      return jsonResponse({
         results: [],
         sourceIdentifier: refTagName,
       });
@@ -173,7 +170,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
     }
 
-    return Response.json({
+    return jsonResponse({
       results,
       sourceIdentifier: refTagName,
       sourceUrl,
@@ -181,9 +178,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   } catch (error) {
     console.error('Verification error:', error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Failed to verify citations' },
-      { status: 500 }
+    return errorResponse(
+      error instanceof Error ? error.message : 'Failed to verify citations',
+      500
     );
   }
 };
