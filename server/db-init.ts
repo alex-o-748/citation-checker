@@ -28,8 +28,15 @@ export async function initDatabase() {
         ref_tag_name TEXT NOT NULL,
         source_text TEXT NOT NULL,
         source_url TEXT,
+        ai_provider VARCHAR(50) NOT NULL DEFAULT 'publicai',
         created_at TIMESTAMP DEFAULT NOW() NOT NULL
       )
+    `;
+
+    // Add ai_provider column if it doesn't exist (migration for existing databases)
+    await database`
+      ALTER TABLE verification_checks
+      ADD COLUMN IF NOT EXISTS ai_provider VARCHAR(50) NOT NULL DEFAULT 'publicai'
     `;
 
     // Create citation_results table

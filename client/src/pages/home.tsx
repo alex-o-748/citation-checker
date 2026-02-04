@@ -160,6 +160,14 @@ export default function Home() {
 
       setResults(responseData.results);
 
+      if (responseData.dbError) {
+        toast({
+          title: "Database save failed",
+          description: responseData.dbError,
+          variant: "destructive",
+        });
+      }
+
       if (responseData.sourceFetchedAutomatically && responseData.sourceUrl) {
         setAutoFetchedUrl(responseData.sourceUrl);
         toast({
