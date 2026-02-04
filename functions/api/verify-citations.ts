@@ -146,8 +146,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     const results = await Promise.all(verificationPromises);
 
-    // Save verification results to database (if DATABASE_URL is configured)
-    if (env.DATABASE_URL) {
+    // Save verification results to database
+    let savedToDb = false;
+    let dbError: string | undefined;
+
+    if (!env.DATABASE_URL) {
+      dbError = 'DATABASE_URL is not configured';
+      console.warn('[Storage] DATABASE_URL is not configured, skipping database save');
+    } else {
       try {
         await saveVerificationCheck(
           env.DATABASE_URL,
@@ -164,8 +170,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             reasoning: r.reasoning,
           }))
         );
+        savedToDb = true;
         console.log('[Storage] Verification results saved to database');
       } catch (error) {
+        dbError = error instanceof Error ? error.message : 'Unknown database error';
         console.error('[Storage] Failed to save verification results:', error);
       }
     }
@@ -175,6 +183,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       sourceIdentifier: refTagName,
       sourceUrl,
       sourceFetchedAutomatically,
+      savedToDb,
+      dbError,
     });
   } catch (error) {
     console.error('Verification error:', error);

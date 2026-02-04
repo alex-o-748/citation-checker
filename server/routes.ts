@@ -198,6 +198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await Promise.all(verificationPromises);
 
       // Save verification results to database
+      let savedToDb = false;
+      let dbError: string | undefined;
+
       try {
         await storage.saveVerificationCheck(
           wikipediaUrl,
@@ -213,9 +216,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             reasoning: r.reasoning,
           }))
         );
+        savedToDb = true;
         console.log('[Storage] Verification results saved to database');
       } catch (error) {
         // Don't fail the request if database save fails
+        dbError = error instanceof Error ? error.message : 'Unknown database error';
         console.error('[Storage] Failed to save verification results:', error);
       }
 
@@ -224,6 +229,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceIdentifier: refTagName,
         sourceUrl,
         sourceFetchedAutomatically,
+        savedToDb,
+        dbError,
       });
     } catch (error) {
       console.error("Verification error:", error);
