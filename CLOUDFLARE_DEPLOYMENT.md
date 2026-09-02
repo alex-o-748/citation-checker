@@ -1,18 +1,23 @@
 # Deploying Citation Checker to Cloudflare Pages
 
-This guide walks you through deploying the Citation Checker app to Cloudflare Pages.
+The app is a static single-page site. There are no Pages Functions, no
+database and no server-side secrets to configure — verification runs in the
+visitor's browser through the shared package (see `README.md`), which talks to
+the same Cloudflare Worker proxy the Wikipedia user script uses.
 
 ## Prerequisites
 
 1. A [Cloudflare account](https://dash.cloudflare.com/sign-up)
 2. Node.js 18+ installed locally
-3. Your Neon database URL (the app already uses Neon PostgreSQL)
 
 ## Step 1: Install Dependencies
 
 ```bash
 npm install
 ```
+
+This pulls `citation-checker-script` straight from GitHub, so the build host
+needs to be able to reach github.com. Cloudflare's build environment can.
 
 ## Step 2: Set Up Cloudflare (First Time Only)
 
@@ -35,18 +40,18 @@ npm install
 3. Click **Create application** > **Pages** > **Connect to Git**
 4. Connect your GitHub/GitLab repository
 
-## Step 3: Configure Environment Variables
+## Step 3: Environment Variables
 
-In the Cloudflare Dashboard:
+None. The app holds no server-side key.
 
-1. Go to **Workers & Pages** > **citation-checker** > **Settings** > **Environment variables**
-2. Add the following variables:
+Providers that need no key (HuggingFace, PublicAI, Lift Wing) are routed
+through the shared Worker proxy, which injects its own upstream credential.
+Providers that do need one (Claude, Gemini, OpenAI) take it from the user, in
+their browser, for that tab only — it is never stored and never passes through
+any server of ours.
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | Your Neon PostgreSQL connection string | Yes |
-| `PUBLICAI_API_KEY` | Public.ai API key (for free AI verification) | Yes |
-| `OLLAMA_API_KEY` | Ollama API key (optional) | No |
+If you previously set `DATABASE_URL`, `PUBLICAI_API_KEY` or `OLLAMA_API_KEY` on
+this Pages project, they are no longer read and can be removed.
 
 ## Step 4: Deploy
 
@@ -64,7 +69,7 @@ If you connected your repository to Cloudflare Pages:
 2. Configure:
    - **Build command:** `npm run build`
    - **Build output directory:** `dist/public`
-   - **Root directory:** `/` (or your monorepo path)
+   - **Root directory:** `/`
 
 Now every push to your main branch will trigger a deployment.
 
@@ -73,69 +78,57 @@ Now every push to your main branch will trigger a deployment.
 Once deployed, your app will be available at:
 - `https://citation-checker.pages.dev` (or your custom domain)
 
-## Local Development
+Check one citation end to end. If verdicts come back but sources never do, the
+Worker proxy is the thing to look at, not this app — see "The Worker proxy" in
+`README.md`.
 
-To run the app locally with Cloudflare Workers runtime:
+## Local Development
 
 ```bash
 npm run dev
 ```
 
-This uses Wrangler to simulate the Cloudflare Pages environment locally.
+Plain Vite on port 5000. There is no Workers runtime to simulate any more;
+`npm run preview` serves the built output through Wrangler if you want to check
+the deployed artifact.
 
 ## Project Structure
 
 ```
 citation-checker/
-├── client/              # React frontend (Vite)
-├── functions/           # Cloudflare Pages Functions (API)
-│   ├── api/
-│   │   ├── list-references.ts
-│   │   └── verify-citations.ts
-│   └── lib/             # Shared utilities for functions
+├── client/              # React frontend (Vite) — the whole app
+│   └── src/
+│       ├── lib/verification.ts   # the only seam onto the shared package
+│       └── types/                # hand-written types for that package
 ├── dist/public/         # Build output (deployed to Pages)
 ├── wrangler.toml        # Cloudflare configuration
 └── package.json
 ```
 
-## API Endpoints
-
-The following API endpoints are available:
-
-- `GET /api/list-references?url=<wikipedia-url>` - List all references in a Wikipedia article
-- `POST /api/verify-citations` - Verify citations against sources
-
 ## Troubleshooting
 
-### "Function invocation failed"
-- Check your environment variables are set correctly
-- Look at the function logs in Cloudflare Dashboard > Workers & Pages > your-project > Functions
+### Build fails resolving `citation-checker-script`
+The dependency is a GitHub URL, not an npm registry package. Check the branch
+or tag named in `package.json` still exists and that the build host can reach
+github.com.
 
-### Database connection issues
-- Ensure `DATABASE_URL` is set correctly
-- Neon serverless works with Cloudflare Workers natively
+### References load but sources never do
+Source fetching goes through the Worker proxy
+(`publicai-proxy.alaexis.workers.dev`), which must return
+`Access-Control-Allow-Origin: *` for this site's origin. That Worker lives in
+`alex-o-748/public-ai-proxy`.
 
 ### Build failures
 - Run `npm run build` locally first to check for errors
 - Ensure all dependencies are in `package.json`
-
-## Differences from Replit
-
-| Aspect | Replit | Cloudflare Pages |
-|--------|--------|------------------|
-| Backend | Express.js (Node.js) | Pages Functions (Workers) |
-| Database | Same (Neon PostgreSQL) | Same (Neon PostgreSQL) |
-| Frontend | Vite | Vite (unchanged) |
-| Deployment | Automatic | Git-based or manual |
-| Free Tier | Limited hours | 100k requests/day |
 
 ## Cost
 
 Cloudflare Pages Free Tier includes:
 - Unlimited sites
 - Unlimited static requests
-- 100,000 function invocations/day
 - Automatic SSL
 - Global CDN
 
-This should be more than enough for most use cases!
+With no Functions, the free tier's 100k function-invocations/day limit no
+longer applies to this project at all.

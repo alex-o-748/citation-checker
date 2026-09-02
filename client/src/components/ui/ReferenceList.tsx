@@ -1,17 +1,57 @@
 import { useState } from "react";
+import { loadArticleCitations, type Citation } from "@/lib/verification";
 
-interface ReferenceInfo {
+/**
+ * One footnote in the article, with every claim that cites it.
+ *
+ * The article's citations come from the shared package's `collectCitations` —
+ * the same collector the Wikipedia userscript and the Toolforge batch pipeline
+ * use — so a footnote listed here is a footnote those tools would also find.
+ * Grouping by `refId` is presentation only: a named `<ref>` cited five times
+ * is one source backing five different claims, and verifying it once against
+ * all five is what this app has always done.
+ */
+export interface ReferenceInfo {
   id: string;
-  type: "ref" | "sfn";
-  preview?: string;
-  hasUrl?: boolean;
-  fullContent?: string;
+  /** Display label: the ref name when there is one, else "[N]". */
+  label: string;
+  type: "named" | "unnamed";
+  citations: Citation[];
+  url: string | null;
+  pageNum: number | null;
+  preview: string;
+}
+
+export interface SelectedReference extends ReferenceInfo {
+  articleTitle: string;
+  revisionId: string | null;
 }
 
 interface ReferenceListProps {
   wikipediaUrl: string;
-  onSelectReference: (refId: string, hasUrl?: boolean, fullContent?: string) => void;
+  onSelectReference: (reference: SelectedReference) => void;
   onBack?: () => void;
+}
+
+function groupByFootnote(citations: Citation[]): ReferenceInfo[] {
+  const byRefId = new Map<string, ReferenceInfo>();
+  for (const citation of citations) {
+    let entry = byRefId.get(citation.refId);
+    if (!entry) {
+      entry = {
+        id: citation.refId,
+        label: citation.refName ?? `[${citation.citationNumber}]`,
+        type: citation.refName ? "named" : "unnamed",
+        citations: [],
+        url: citation.url,
+        pageNum: citation.pageNum,
+        preview: citation.claimText,
+      };
+      byRefId.set(citation.refId, entry);
+    }
+    entry.citations.push(citation);
+  }
+  return Array.from(byRefId.values());
 }
 
 export default function ReferenceList({
@@ -23,7 +63,8 @@ export default function ReferenceList({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [articleTitle, setArticleTitle] = useState<string>("");
+  const [articleTitle, setArticleTitle] = useState("");
+  const [revisionId, setRevisionId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const itemsPerPage = 20;
@@ -33,36 +74,25 @@ export default function ReferenceList({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/list-references?url=${encodeURIComponent(wikipediaUrl)}`,
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to load references");
-      }
-
-      const data = await response.json();
-      setReferences(data.references);
-      setArticleTitle(data.articleTitle);
+      const article = await loadArticleCitations(wikipediaUrl);
+      setReferences(groupByFootnote(article.citations));
+      setArticleTitle(article.title);
+      setRevisionId(article.revisionId);
       setCurrentPage(1);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load references",
-      );
+      setError(err instanceof Error ? err.message : "Failed to load references");
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter references based on search term
   const filteredReferences = references.filter(
     (ref) =>
-      ref.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ref.preview?.toLowerCase().includes(searchTerm.toLowerCase()),
+      ref.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ref.preview.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ref.url ?? "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredReferences.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -70,53 +100,58 @@ export default function ReferenceList({
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    // Scroll to top of list
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (references.length === 0 && !loading && !error) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Step 1: Load References</h2>
-        <p className="text-gray-600 mb-4">
-          First, load all references from the Wikipedia article to select which
-          one to verify.
+      <div className="rounded-lg border bg-card p-6 shadow-sm">
+        <h2 className="mb-4 text-xl font-semibold">Step 2: Load References</h2>
+        <p className="mb-4 text-muted-foreground">
+          Load the article's citations, then pick the one to verify.
         </p>
-        <button
-          onClick={loadReferences}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Load References
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={loadReferences}
+            className="rounded-lg bg-primary px-6 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
+            data-testid="button-load-references"
+          >
+            Load References
+          </button>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="rounded-lg border px-6 py-2 transition-colors hover-elevate"
+            >
+              Back
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold mb-2">
-        Select a Reference to Verify
-      </h2>
+    <div className="rounded-lg border bg-card p-6 shadow-sm">
+      <h2 className="mb-2 text-xl font-semibold">Select a Reference to Verify</h2>
       {articleTitle && (
-        <p className="text-gray-600 mb-4">
+        <p className="mb-4 text-muted-foreground">
           Article: <span className="font-medium">{articleTitle}</span>
+          {revisionId && <span className="ml-2 text-sm">(revision {revisionId})</span>}
         </p>
       )}
 
       {loading && (
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading references...</span>
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          <span className="ml-3 text-muted-foreground">Loading references…</span>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-          <p className="text-red-800">{error}</p>
-          <button
-            onClick={loadReferences}
-            className="mt-2 text-red-600 hover:text-red-800 underline"
-          >
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
+          <p className="text-red-800 dark:text-red-200">{error}</p>
+          <button onClick={loadReferences} className="mt-2 underline">
             Try again
           </button>
         </div>
@@ -124,120 +159,104 @@ export default function ReferenceList({
 
       {!loading && references.length > 0 && (
         <>
-          {/* Search bar */}
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Search references..."
+              placeholder="Search references…"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset to first page on search
+                setCurrentPage(1);
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-lg border px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-primary"
+              data-testid="input-search-references"
             />
           </div>
 
-          {/* Reference count */}
-          <p className="text-sm text-gray-600 mb-4">
-            Showing {startIndex + 1}-
-            {Math.min(endIndex, filteredReferences.length)} of{" "}
+          <p className="mb-4 text-sm text-muted-foreground">
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredReferences.length)} of{" "}
             {filteredReferences.length} references
             {searchTerm && ` (filtered from ${references.length} total)`}
           </p>
 
-          {/* References list */}
-          <div className="space-y-2 mb-4">
+          <div className="mb-4 space-y-2">
             {paginatedReferences.map((ref) => (
               <button
                 key={ref.id}
-                onClick={() => onSelectReference(ref.id, ref.hasUrl, ref.fullContent)}
-                className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group"
+                onClick={() => onSelectReference({ ...ref, articleTitle, revisionId })}
+                className="group w-full rounded-lg border p-4 text-left transition-colors hover:border-primary hover-elevate"
+                data-testid={`button-reference-${ref.id}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm font-semibold text-gray-900 group-hover:text-blue-700">
-                        {ref.id}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-sm font-semibold">{ref.label}</span>
+                      <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {ref.type}
                       </span>
-                      {ref.hasUrl && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700 flex items-center gap-1">
+                      {ref.citations.length > 1 && (
+                        <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {ref.citations.length} claims
+                        </span>
+                      )}
+                      {ref.url ? (
+                        <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
                           🔗 Auto-fetch
+                        </span>
+                      ) : (
+                        <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                          Paste source
                         </span>
                       )}
                     </div>
-                    {ref.preview && (
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        ...{ref.preview}
-                      </p>
-                    )}
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{ref.preview}</p>
                   </div>
                   <svg
-                    className="w-5 h-5 text-gray-400 group-hover:text-blue-600 flex-shrink-0 ml-2"
+                    className="ml-2 h-5 w-5 flex-shrink-0 text-muted-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
               </button>
             ))}
           </div>
 
-          {/* Pagination controls */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t pt-4">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
 
               <div className="flex items-center gap-2">
-                {/* Page numbers */}
                 {[...Array(totalPages)].map((_, idx) => {
                   const pageNum = idx + 1;
-                  // Show first page, last page, current page, and pages around current
                   const showPage =
-                    pageNum === 1 ||
-                    pageNum === totalPages ||
-                    Math.abs(pageNum - currentPage) <= 1;
-
-                  // Show ellipsis
-                  const showEllipsisBefore =
-                    pageNum === currentPage - 2 && currentPage > 3;
-                  const showEllipsisAfter =
-                    pageNum === currentPage + 2 && currentPage < totalPages - 2;
+                    pageNum === 1 || pageNum === totalPages || Math.abs(pageNum - currentPage) <= 1;
+                  const showEllipsisBefore = pageNum === currentPage - 2 && currentPage > 3;
+                  const showEllipsisAfter = pageNum === currentPage + 2 && currentPage < totalPages - 2;
 
                   if (showEllipsisBefore || showEllipsisAfter) {
                     return (
-                      <span key={pageNum} className="px-2 text-gray-500">
-                        ...
+                      <span key={pageNum} className="px-2 text-muted-foreground">
+                        …
                       </span>
                     );
                   }
-
                   if (!showPage) return null;
 
                   return (
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-1 text-sm font-medium rounded-lg ${
-                        currentPage === pageNum
-                          ? "bg-blue-600 text-white"
-                          : "text-gray-700 hover:bg-gray-100"
+                      className={`rounded-lg px-3 py-1 text-sm font-medium ${
+                        currentPage === pageNum ? "bg-primary text-primary-foreground" : "hover-elevate"
                       }`}
                     >
                       {pageNum}
@@ -249,20 +268,23 @@ export default function ReferenceList({
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
             </div>
           )}
 
-          {/* Reload button */}
-          <button
-            onClick={loadReferences}
-            className="mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
-          >
-            Reload references
-          </button>
+          <div className="mt-4 flex gap-4 text-sm">
+            <button onClick={loadReferences} className="underline">
+              Reload references
+            </button>
+            {onBack && (
+              <button onClick={onBack} className="underline">
+                Change article
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>

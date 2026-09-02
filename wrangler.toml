@@ -1,12 +1,11 @@
 # Cloudflare Pages configuration
+#
+# Static site only — no Pages Functions, no bindings, no environment
+# variables. Verification runs in the visitor's browser against the shared
+# `citation-checker-script` package, which routes keyless providers and source
+# fetching through the same Worker proxy the Wikipedia user script uses.
 name = "citation-checker"
 compatibility_date = "2024-01-01"
-compatibility_flags = ["nodejs_compat"]
 
 # Pages-specific settings
 pages_build_output_dir = "dist/public"
-
-# Environment variables (set these in Cloudflare dashboard for production)
-# [vars]
-# PUBLICAI_API_KEY = "your-key-here"
-# DATABASE_URL = "your-neon-database-url"
