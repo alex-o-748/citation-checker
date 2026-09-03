@@ -1,33 +1,42 @@
-import CitationResults from '../CitationResults';
+import CitationResults, { type CitationResult } from '../CitationResults';
+
+const mockResults: CitationResult[] = [
+  {
+    id: 1,
+    citationNumber: "14",
+    wikipediaClaim: "The Great Wall of China is approximately 21,196 kilometers long.",
+    verdict: "SUPPORTED",
+    supportScore: 95,
+    reasoning: "The source states the same figure the claim gives.",
+    sourceExcerpt: "the total length of the Great Wall, including all branches and sections, measures 21,196.18 km (13,170.70 mi)",
+    quoteStatus: "normalized",
+  },
+  {
+    id: 2,
+    citationNumber: "15",
+    wikipediaClaim: "Construction began in the 7th century BC.",
+    verdict: "PARTIALLY SUPPORTED",
+    supportScore: 65,
+    reasoning: "The source confirms early construction but does not give the 7th century BC.",
+    sourceExcerpt: "Early wall segments were built by various states during the Warring States period.",
+    quoteStatus: "exact",
+  },
+  {
+    id: 3,
+    citationNumber: "16",
+    wikipediaClaim: "The wall is visible from the Moon with the naked eye.",
+    verdict: "NOT SUPPORTED",
+    supportScore: 5,
+    reasoning: "The source directly contradicts the claim.",
+    sourceExcerpt: "No human-made structure is visible from the Moon without magnification.",
+    quoteStatus: "exact",
+  },
+];
 
 export default function CitationResultsExample() {
-  const mockResults = [
-    {
-      id: 1,
-      wikipediaClaim: "The Great Wall of China is approximately 21,196 kilometers long.",
-      sourceExcerpt: "Recent archaeological surveys have determined that the total length of the Great Wall, including all branches and sections, measures 21,196.18 km (13,170.70 mi).",
-      confidence: 95,
-      supportStatus: 'supported' as const,
-    },
-    {
-      id: 2,
-      wikipediaClaim: "Construction began in the 7th century BC.",
-      sourceExcerpt: "Early wall segments were built by various states during the Warring States period, with major construction occurring around the 3rd century BC under Emperor Qin.",
-      confidence: 65,
-      supportStatus: 'partially_supported' as const,
-    },
-    {
-      id: 3,
-      wikipediaClaim: "The wall is visible from space with the naked eye.",
-      sourceExcerpt: "Contrary to popular belief, the Great Wall is not visible from space without aid. Astronauts have confirmed this myth is false.",
-      confidence: 15,
-      supportStatus: 'not_supported' as const,
-    },
-  ];
-
   return (
     <div className="p-6">
-      <CitationResults results={mockResults} sourceIdentifier="Smith 2020" />
+      <CitationResults results={mockResults} sourceIdentifier="great-wall-survey" />
     </div>
   );
 }
